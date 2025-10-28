@@ -1,0 +1,56 @@
+class zcl_zfin_common_dpc_ext definition
+  public
+  inheriting from zcl_zfin_common_dpc
+  create public .
+
+  public section.
+  protected section.
+
+    methods feedbackratings_create_entity
+        redefinition .
+  private section.
+ENDCLASS.
+
+
+
+CLASS ZCL_ZFIN_COMMON_DPC_EXT IMPLEMENTATION.
+
+
+  method feedbackratings_create_entity.
+
+    data:
+      lo_message_container type ref to /iwbep/if_message_container,
+      l_message            type string.
+
+*===> read the supplied data
+    io_data_provider->read_entry_data(
+      importing
+        es_data = er_entity ).
+
+*--- only update if a rating or comment is entered
+    if er_entity-rating is not initial
+    or er_entity-comments is not initial.
+
+*===> sy details
+      er_entity-entered_by = sy-uname.
+      er_entity-entered_date = sy-datum.
+      er_entity-entered_time = sy-uzeit.
+
+*===> save data to table
+      modify ztfin_feedback from er_entity.
+      if sy-subrc <> 0.
+        lo_message_container->add_message(
+          iv_msg_type = sy-msgty
+          iv_msg_id = sy-msgid
+          iv_msg_number = sy-msgno
+          iv_msg_v1 = sy-msgv1
+          iv_msg_v2 = sy-msgv2
+          iv_msg_v3 = sy-msgv3
+          iv_msg_v4 = sy-msgv4
+          iv_add_to_response_header = abap_true ).
+      endif.
+
+    endif.
+
+  endmethod.
+ENDCLASS.

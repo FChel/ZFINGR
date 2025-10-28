@@ -1,0 +1,7 @@
+@EndUserText.label : 'GR Material Doc'
+@AbapCatalog.enhancementCategory : #EXTENSIBLE_ANY
+define structure zsfin_gr_matdoc {
+  mat_doc  : mblnr;
+  doc_year : mjahr;
+
+}

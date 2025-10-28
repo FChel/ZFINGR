@@ -1,0 +1,15 @@
+@EndUserText.label : 'GR Header'
+@AbapCatalog.enhancementCategory : #EXTENSIBLE_ANY
+define structure zsfin_gr_hdr {
+  mat_doc       : mblnr;
+  doc_year      : mjahr;
+  po_number     : ebeln;
+  po_is_myfi    : sap_bool;
+  currency      : waers;
+  total_value   : bapicurr_d;
+  vendor        : elifn;
+  vendor_name   : name1;
+  username      : usnam;
+  username_full : systring;
+
+}

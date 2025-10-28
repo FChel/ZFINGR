@@ -1,0 +1,21 @@
+@EndUserText.label : 'GR Item'
+@AbapCatalog.enhancementCategory : #EXTENSIBLE_ANY
+define structure zsfin_gr_itm {
+  matdoc_itm           : mblpo;
+  po_item              : ebelp;
+  short_text           : txz01;
+  ref_doc_no           : xblnr;
+  header_txt           : bktxt;
+  @Semantics.quantity.unitOfMeasure : 'zsfin_gr_itm.entry_uom'
+  entry_qnt            : erfmg;
+  entry_uom            : erfme;
+  net_price            : bapicurext;
+  tax_code             : mwskz;
+  doc_date             : bldat;
+  selected             : sap_bool;
+  reversed             : sap_bool;
+  cancellation_blocked : elikz;
+  status               : rstxtsh;
+  value_state          : text20;
+
+}

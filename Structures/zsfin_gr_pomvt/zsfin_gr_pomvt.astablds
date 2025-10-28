@@ -1,0 +1,18 @@
+@EndUserText.label : 'GR PO Movement'
+@AbapCatalog.enhancementCategory : #EXTENSIBLE_ANY
+define structure zsfin_gr_pomvt {
+  movt_id      : int4;
+  po_item      : ebelp;
+  ref_doc_no   : xblnr;
+  header_txt   : bktxt;
+  @Semantics.quantity.unitOfMeasure : 'zsfin_gr_pomvt.entry_uom'
+  entry_qnt    : erfmg;
+  entry_uom    : erfme;
+  doc_date     : bldat;
+  is_asset     : sap_bool;
+  po_item_vs   : text20;
+  entry_qnt_vs : text20;
+  doc_date_vs  : text20;
+  line_status  : text20;
+
+}

@@ -1,0 +1,14 @@
+Elementary Help: ZH_FIN_PO1
+
+Selection Method: ZI_FIN_POLOOKUP1
+
+Parameter:
+PO_NUMBER	1	1	EBELN	                     
+CREAT_DATE	2	2	ERDAT	                     
+VENDOR	3	3	ELIFN	                     
+OA_NUMBER	4	4	KONNR	                     
+COSTCENTER	5	0	KOSTL	                     
+WBS_ELEMENT	6	0	PS_POSID	                     
+VENDOR_NAME	0	7	NAME1_GP	                     
+VENDOR_NAME_M_C	8	0	MCDK1	                     
+ABN	9	0	STCEG	                     

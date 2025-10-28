@@ -1,0 +1,23 @@
+@EndUserText.label : 'GR PO Header'
+@AbapCatalog.enhancementCategory : #EXTENSIBLE_ANY
+define structure zsfin_gr_pohdr {
+  po_number          : char12;
+  currency           : waers;
+  total_value        : val_forcurr;
+  vendor             : elifn;
+  vendor_name        : name1;
+  comp_code          : bukrs;
+  complete           : sap_bool;
+  approved           : sap_bool;
+  excluded           : sap_bool;
+  is_my_fi           : sap_bool;
+  submit_flag        : sap_bool;
+  gr_value           : val_forcurr;
+  vimdocid           : /opt/docid;
+  invnumber          : xblnr;
+  vim_invoice_amount : val_forcurr;
+  vim_balance        : val_forcurr;
+  vim_currency       : waers;
+  has_asset          : sap_bool;
+
+}

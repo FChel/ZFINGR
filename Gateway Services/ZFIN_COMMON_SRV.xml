@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="1.0" xmlns:edmx="http://schemas.microsoft.com/ado/2007/06/edmx" xmlns:m="http://schemas.microsoft.com/ado/2007/08/dataservices/metadata" xmlns:sap="http://www.sap.com/Protocols/SAPData">
+ <edmx:DataServices m:DataServiceVersion="2.0">
+  <Schema Namespace="ZFIN_COMMON_SRV" xml:lang="en" sap:schema-version="1" xmlns="http://schemas.microsoft.com/ado/2008/09/edm">
+   <EntityType Name="FeedbackRating" sap:content-version="1">
+    <Key>
+     <PropertyRef Name="EnteredBy"/>
+     <PropertyRef Name="EnteredDate"/>
+     <PropertyRef Name="EnteredTime"/>
+     <PropertyRef Name="SourceObj"/>
+     <PropertyRef Name="SourceKey"/>
+    </Key>
+    <Property Name="EnteredBy" Type="Edm.String" Nullable="false" MaxLength="12" sap:unicode="false" sap:label="User Name" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
+    <Property Name="EnteredDate" Type="Edm.DateTime" Nullable="false" Precision="7" sap:unicode="false" sap:label="Date" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
+    <Property Name="EnteredTime" Type="Edm.Time" Nullable="false" Precision="0" sap:unicode="false" sap:label="Time" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
+    <Property Name="SourceObj" Type="Edm.String" Nullable="false" MaxLength="40" sap:unicode="false" sap:label="Object Name" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
+    <Property Name="SourceKey" Type="Edm.String" Nullable="false" MaxLength="30" sap:unicode="false" sap:label="Object key" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
+    <Property Name="Rating" Type="Edm.String" Nullable="false" MaxLength="1" sap:unicode="false" sap:label="Rating" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
+    <Property Name="Comments" Type="Edm.String" Nullable="false" sap:unicode="false" sap:label="Comment" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
+   </EntityType>
+   <EntityContainer Name="ZFIN_COMMON_SRV_Entities" m:IsDefaultEntityContainer="true" sap:supported-formats="atom json xlsx">
+    <EntitySet Name="FeedbackRatings" EntityType="ZFIN_COMMON_SRV.FeedbackRating" sap:updatable="false" sap:deletable="false" sap:pageable="false" sap:addressable="false" sap:content-version="1"/>
+   </EntityContainer>
+   <atom:link rel="self" href="https://erps2daps01.dz2283.net.au:44300/sap/opu/odata/sap/ZFIN_COMMON_SRV/$metadata" xmlns:atom="http://www.w3.org/2005/Atom"/>
+   <atom:link rel="latest-version" href="https://erps2daps01.dz2283.net.au:44300/sap/opu/odata/sap/ZFIN_COMMON_SRV/$metadata" xmlns:atom="http://www.w3.org/2005/Atom"/>
+  </Schema>
+ </edmx:DataServices>
+</edmx:Edmx>

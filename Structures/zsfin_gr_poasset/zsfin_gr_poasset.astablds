@@ -1,0 +1,8 @@
+@EndUserText.label : 'GR PO Asset'
+@AbapCatalog.enhancementCategory : #EXTENSIBLE_ANY
+define structure zsfin_gr_poasset {
+  po_item    : ebelp;
+  asset_no   : anln1;
+  sub_number : anln2;
+
+}

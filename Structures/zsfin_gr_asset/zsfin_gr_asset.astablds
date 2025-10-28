@@ -1,0 +1,24 @@
+@EndUserText.label : 'GR Asset'
+@AbapCatalog.enhancementCategory : #EXTENSIBLE_ANY
+define structure zsfin_gr_asset {
+  comp_code         : bukrs;
+  asset_no          : anln1;
+  sub_number        : anln2;
+  costcenter        : kostl;
+  location          : stort;
+  assetclass        : bf_anlkl;
+  main_descript     : anlhtxt;
+  note              : bf_invzu_anla;
+  plate_no          : bf_am_kfzkz;
+  invent_no         : bf_invnr_anla;
+  serial_no         : bf_am_sernr;
+  room              : bf_raumnr;
+  main_descript_off : fnein;
+  note_off          : fnein;
+  plate_no_off      : fnein;
+  invent_no_off     : fnein;
+  serial_no_off     : fnein;
+  room_off          : fnein;
+  room_locked       : sap_bool;
+
+}

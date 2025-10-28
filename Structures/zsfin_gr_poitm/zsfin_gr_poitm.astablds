@@ -1,0 +1,22 @@
+@EndUserText.label : 'GR PO Item'
+@AbapCatalog.enhancementCategory : #EXTENSIBLE_ANY
+define structure zsfin_gr_poitm {
+  po_item            : ebelp;
+  short_text         : txz01;
+  @Semantics.quantity.unitOfMeasure : 'zsfin_gr_poitm.po_unit'
+  quantity           : bstmg;
+  po_unit            : bstme;
+  net_price          : val_forcurr;
+  tax_code           : mwskz;
+  @Semantics.amount.currencyCode : 'zsfin_gr_poitm.tax_rate_unit'
+  tax_rate           : kbetr_kond;
+  tax_rate_unit      : konwa;
+  effective_value    : val_forcurr;
+  @Semantics.quantity.unitOfMeasure : 'zsfin_gr_poitm.po_unit'
+  quantity_delivered : bstmg;
+  @Semantics.quantity.unitOfMeasure : 'zsfin_gr_poitm.po_unit'
+  quantity_remaining : bstmg;
+  acctasscat         : knttp;
+  is_asset           : sap_bool;
+
+}
