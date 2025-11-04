@@ -1,3 +1,15 @@
+/*----------------------------------------------------------------------*
+* AUTHOR:     220977FKC                                                 *
+* DATE:       17.10.2025                                                *
+* WRICEFX-ID: FINX2103, Goods Recepting Application (Simple, ERP MyFi)  *
+* ----------------------------------------------------------------------*
+* Purpose: Complete Purchase Order Data for GR                          *
+* ----------------------------------------------------------------------*
+* MODIFICATION HISTORY                                                  *
+* UserID       Date        Transport   Description                      *
+* 220977FKC    17.10.2025  S2DK940804  Initial development              *
+* ---------------------------------------------------------------------*/
+
 @AbapCatalog.sqlViewName: 'ZI_FIN_POCOMP'
 @AbapCatalog.compiler.compareFilter: true
 @AbapCatalog.preserveKey: true
@@ -34,7 +46,6 @@ define view ZI_FIN_GR_POCOMPLETE
       Header.IsComplete,
       Header.IsApproved,
       Header.IsStandardPO,
-      Header.IsMyFiEnabled,
       
       -- Calculated total value
       @Semantics.amount.currencyCode: 'Currency'
@@ -60,4 +71,4 @@ define view ZI_FIN_GR_POCOMPLETE
 group by Header.PurchaseOrder, Header.CompanyCode, Header.DocumentType,
          Header.Vendor, Header.VendorName, Header.Currency,
          Header.DocumentDate, Header.CreatedBy, Header.IsComplete,
-         Header.IsApproved, Header.IsStandardPO, Header.IsMyFiEnabled
+         Header.IsApproved, Header.IsStandardPO

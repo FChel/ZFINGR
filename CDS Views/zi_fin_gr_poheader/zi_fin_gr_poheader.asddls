@@ -1,3 +1,14 @@
+/*----------------------------------------------------------------------*
+* AUTHOR:     220977FKC                                                 *
+* DATE:       17.10.2025                                                *
+* WRICEFX-ID: FINX2103, Goods Recepting Application (Simple, ERP MyFi)  *
+* ----------------------------------------------------------------------*
+* Purpose: Purchase Order Header for GR                                 *
+* ----------------------------------------------------------------------*
+* MODIFICATION HISTORY                                                  *
+* UserID       Date        Transport   Description                      *
+* 220977FKC    17.10.2025  S2DK940804  Initial development              *
+* ---------------------------------------------------------------------*/
 @AbapCatalog.sqlViewName: 'ZI_FIN_POHEADER'
 @AccessControl.authorizationCheck: #NOT_REQUIRED
 @EndUserText.label: 'Purchase Order Header for GR'
@@ -44,17 +55,11 @@ define view ZI_FIN_GR_POHEADER
            else ''
       end as IsApproved,
       
-      case when ekko.bsart = 'NB'
+      case when ekko.bsart = 'NB' or ekko.bsart = 'ZNB'
            then 'X'
            else ''
       end as IsStandardPO,
-      
-      -- All standard POs are MyFi enabled
-      case when ekko.bsart = 'NB'
-           then 'X'
-           else ''
-      end as IsMyFiEnabled,
-      
+            
       -- Associations
       _Items,
       _Vendor

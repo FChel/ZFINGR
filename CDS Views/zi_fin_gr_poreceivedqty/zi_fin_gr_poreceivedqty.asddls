@@ -1,3 +1,14 @@
+/*----------------------------------------------------------------------*
+* AUTHOR:     220977FKC                                                 *
+* DATE:       17.10.2025                                                *
+* WRICEFX-ID: FINX2103, Goods Recepting Application (Simple, ERP MyFi)  *
+* ----------------------------------------------------------------------*
+* Purpose: PO Goods Receipt Quantities                                  *
+* ----------------------------------------------------------------------*
+* MODIFICATION HISTORY                                                  *
+* UserID       Date        Transport   Description                      *
+* 220977FKC    17.10.2025  S2DK940804  Initial development              *
+* ---------------------------------------------------------------------*/
 @AbapCatalog.sqlViewName: 'ZI_FIN_PORECQTY'
 @AbapCatalog.compiler.compareFilter: true
 @AbapCatalog.preserveKey: true

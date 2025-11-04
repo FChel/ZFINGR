@@ -1,3 +1,14 @@
+/*----------------------------------------------------------------------*
+* AUTHOR:     220977FKC                                                 *
+* DATE:       17.10.2025                                                *
+* WRICEFX-ID: FINX2103, Goods Recepting Application (Simple, ERP MyFi)  *
+* ----------------------------------------------------------------------*
+* Purpose: Purchase Order Items for GR                                  *
+* ----------------------------------------------------------------------*
+* MODIFICATION HISTORY                                                  *
+* UserID       Date        Transport   Description                      *
+* 220977FKC    17.10.2025  S2DK940804  Initial development              *
+* ---------------------------------------------------------------------*/
 @AbapCatalog.sqlViewName: 'ZI_FIN_POITEMS'
 @AbapCatalog.compiler.compareFilter: true
 @AbapCatalog.preserveKey: true
@@ -41,8 +52,10 @@ define view ZI_FIN_GR_POITEMS
       ekpo.knttp      as AccountAssignmentCategory,
       ekpo.loekz      as DeletionIndicator,
       ekpo.elikz      as DeliveryCompleted,
-      ekpo.erekz      as FinalInvoice,
-      ekpo.repos      as InvoiceReceipt,
+      ekpo.erekz      as FinalInvoice,      
+      ekpo.wepos      as GoodsReceiptIndicator,
+      ekpo.matnr      as MaterialNumber,
+      ekpo.pstyp      as ItemCategory,
       
       -- GR quantities
       @Semantics.quantity.unitOfMeasure: 'OrderUnit'
@@ -52,11 +65,13 @@ define view ZI_FIN_GR_POITEMS
       ekpo.menge - coalesce(gr.DeliveredQuantity, cast(0 as abap.dec(13,3))) as OpenQuantity,
       
       -- Flags for GR processing
-      case when ekpo.repos = ''  -- GR indicator set
+      case when ekpo.wepos = 'X'  -- GR indicator set
            and ekpo.elikz = ''  -- Not delivery completed
            and ekpo.loekz = ''  -- Not deleted
            and ekpo.erekz = ''  -- Not final invoiced
            and ekpo.knttp != 'X' -- Not unknown account assignment
+           and ekpo.matnr = ''  -- Not Material item
+           and ekpo.pstyp != '9' -- Not a Service Line
            then 'X'
            else ''
       end as AvailableForGR,
