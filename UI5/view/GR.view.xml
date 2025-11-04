@@ -1,137 +1,269 @@
 <mvc:View
-  height="100%"
-  controllerName="defence.finance.finux.gr.controller.GR"
-  xmlns="sap.m"
-  xmlns:core="sap.ui.core"
-  xmlns:mvc="sap.ui.core.mvc"
-  xmlns:f="sap.ui.layout.form">
-  <Page
-    class="sapUiContentPadding sapUiResponsivePadding--header sapUiResponsivePadding--content sapUiResponsivePadding--footer"
-    showHeader="false"
-    busy="{viewModel>/busy}" busyIndicatorDelay="{viewModel>/delay}"
-    showFooter="true" floatingFooter="true">
-    <content>
-      <VBox>
-        <f:Form editable="false">
-          <f:title>
-            <core:Title text="{i18n>poDetailsTitle}" />
-          </f:title>
-          <f:layout>
-            <f:ResponsiveGridLayout columnsXL="2" columnsL="2" columnsM="2" singleContainerFullSize="true" />
-          </f:layout>
-          <f:formContainers>
-            <f:FormContainer>
-              <f:formElements>
-                <f:FormElement label="{i18n>poLabel}">
-                  <f:fields>
-                    <FormattedText htmlText="{parts: [{path: 'PoNumber'}, {path:'PoIsMyFi'}], formatter: '.formatter.poLinkHtml'}"/>
-                  </f:fields>
-                </f:FormElement>
-                <f:FormElement label="{i18n>poValueLabel}">
-                  <f:fields>
-                    <ObjectNumber
-                      emphasized="false"
-                      number="{parts: [{path: 'TotalValue'}, {path:'Currency'}], type:'sap.ui.model.type.Currency', formatOptions:{showMeasure: false}}"
-                      unit="{Currency}" />
-                  </f:fields>
-                </f:FormElement>
-                <f:FormElement label="{i18n>vendorLabel}">
-                  <f:fields>
-                    <Text text="{VendorName} ({Vendor})" />
-                  </f:fields>
-                </f:FormElement>
-              </f:formElements>
-            </f:FormContainer>
-            <f:FormContainer>
-              <f:formElements>
-                <f:FormElement label="{i18n>grLabel}">
-                  <f:fields>
-                    <Text text="{MatDoc}" />
-                  </f:fields>
-                </f:FormElement>
-                <f:FormElement label="{i18n>usernameLabel}">
-                  <f:fields>
-                              <Text text="{UsernameFull} ({Username})" />
-                  </f:fields>
-                </f:FormElement>
-              </f:formElements>
-            </f:FormContainer>
-          </f:formContainers>
-        </f:Form>              
-		<MessageStrip class="sapUiSmallMarginBeginEnd sapUiSmallMarginTopBottom" 
-		    type="{= ${viewModel>/hasSelection} ? 'Information' : 'Warning'}" 
-		    showIcon="true"
-		    text="{= ${viewModel>/hasSelection} ? ${i18n>grCancelMessageWithSelection} : ${i18n>grCancelMessageNoSelection}}" 
-		    visible="{viewModel>/editMode}" />          
-        <Table id="itemsTable"
-          alternateRowColors="true"
-          items="{itemModel>/}"
-          selectionChange="onItemSelectionChanged"
-          growing="false"
-          mode="{=${viewModel>/editMode} ? 'MultiSelect' : 'None'}">
-          <headerToolbar>
-            <OverflowToolbar>
-              <Title text="{i18n>grItemsTableTitle}" level="H2"/>
-              <ToolbarSpacer />
-              <Button icon="sap-icon://overflow" press=".onMorePress" tooltip="{i18n>overflowButtonTooltip}" enabled="{viewModel>/canBeCancelled}" />
-            </OverflowToolbar>
-          </headerToolbar>
-          <columns>
-            <Column hAlign="Left" width="9em">
-              <Label text="{i18n>poItemLabel}" textAlign="Center" wrapping="true"/>
-            </Column>
-            <Column hAlign="Left">
-              <Label text="{i18n>poItemTextLabel}" textAlign="Center" wrapping="true"/>
-            </Column>
-            <Column hAlign="Left">
-              <Label text="{i18n>movtHeaderTextLabel}" textAlign="Center" wrapping="true"/>
-            </Column>
-            <Column hAlign="Left">
-              <Label text="{i18n>movtDelNoteLabel}" textAlign="Center" wrapping="true"/>
-            </Column>
-            <Column hAlign="Center">
-              <Label text="{i18n>movtQuantityRecLabel}" textAlign="Center" wrapping="true"/>
-            </Column>
-            <Column hAlign="Center">
-              <Label text="{i18n>movtRecDateLabel}" textAlign="Center" wrapping="true"/>
-            </Column>
-            <Column hAlign="Center">
-              <Label text="{i18n>movtStatusLabel}" textAlign="Center" wrapping="true"/>
-            </Column>            
-          </columns>
-          <items>
-            <ColumnListItem selected="{itemModel>Selected}" highlight="{itemModel>ValueState}">
-              <cells>
-                <Text text="{path:'itemModel>PoItem', formatter: '.formatter.removeLeadingZero'}"/>
-                <Text text="{itemModel>ShortText}"/>
-                <Text text="{itemModel>HeaderTxt}"></Text>
-                <Text text="{itemModel>RefDocNo}"></Text>
-                <Text text="{path: 'itemModel>EntryQnt', type: 'sap.ui.model.odata.type.Decimal', formatOptions: {decimals: 3}, constraints:{scale: 'variable'}}"/>
-                <Text text="{path: 'itemModel>DocDate', type: 'sap.ui.model.type.Date', formatOptions: {pattern:'dd.MM.yyyy', strictParsing:true, UTC: true} }"/>
-                <ObjectStatus text="{itemModel>Status}" state="{itemModel>ValueState}" />
-              </cells>
-            </ColumnListItem>
-          </items>
-        </Table>
-      </VBox>
-    </content>
-    <footer>
-      <OverflowToolbar>
-        <Button id="messagesButton"
-          icon="{viewModel>/messageButtonIcon}"
-          enabled="true"
-          text="{=${message>/}.length === 0 ? '' : ${message>/}.length}"
-          tooltip="{i18n>grMessagesButtonTooltip}"
-          type="{viewModel>/messageButtonType}"
-          visible="{viewModel>/editMode}"
-          press=".onMessagePopoverPress">
-        </Button>
-        <ToolbarSpacer/>          
-         <Button press=".onSubmitConfirm" type="Emphasized" text="{i18n>poGrSubmitButtonText}" 
-    		tooltip="{= ${viewModel>/hasSelection} ? ${i18n>cancelGrButtonTooltip} : ${i18n>cancelGrNoSelectionTooltip}}"
-    		enabled="{= ${viewModel>/bound} &amp;&amp; ${viewModel>/hasSelection} &amp;&amp; ${viewModel>/editMode}}" 
-    		visible="{viewModel>/editMode}" />          
-      </OverflowToolbar>
-    </footer>
-  </Page>
+	height="100%"
+	controllerName="defence.finance.finux.gr.controller.GR"
+	xmlns="sap.m"
+	xmlns:core="sap.ui.core"
+	xmlns:mvc="sap.ui.core.mvc"
+	xmlns:f="sap.ui.layout.form">
+	
+	<Page
+		class="sapUiContentPadding sapUiResponsivePadding--header sapUiResponsivePadding--content sapUiResponsivePadding--footer"
+		showHeader="false"
+		busy="{viewModel>/busy}"
+		busyIndicatorDelay="{viewModel>/delay}"
+		showFooter="true"
+		floatingFooter="true">
+		
+		<content>
+			<VBox>
+				
+				<!-- ========================================== -->
+				<!-- Purchase Order and Goods Receipt Details   -->
+				<!-- ========================================== -->
+				<f:Form editable="false">
+					<f:title>
+						<core:Title text="{i18n>poDetailsTitle}" />
+					</f:title>
+					<f:layout>
+						<f:ResponsiveGridLayout
+							columnsXL="2"
+							columnsL="2"
+							columnsM="2"
+							singleContainerFullSize="true" />
+					</f:layout>
+					<f:formContainers>
+						
+						<!-- Left Column: PO Details -->
+						<f:FormContainer>
+							<f:formElements>
+								
+								<!-- Purchase Order Number -->
+								<f:FormElement label="{i18n>poLabel}">
+									<f:fields>
+										<FormattedText
+											htmlText="{parts: [{path: 'PoNumber'}, {path:'PoIsMyFi'}], formatter: '.formatter.poLinkHtml'}" />
+									</f:fields>
+								</f:FormElement>
+								
+								<!-- Purchase Order Value -->
+								<f:FormElement label="{i18n>poValueLabel}">
+									<f:fields>
+										<ObjectNumber
+											emphasized="false"
+											number="{parts: [{path: 'TotalValue'}, {path:'Currency'}], type:'sap.ui.model.type.Currency', formatOptions:{showMeasure: false}}"
+											unit="{Currency}" />
+									</f:fields>
+								</f:FormElement>
+								
+								<!-- Vendor Information -->
+								<f:FormElement label="{i18n>vendorLabel}">
+									<f:fields>
+										<Text text="{VendorName} ({Vendor})" />
+									</f:fields>
+								</f:FormElement>
+								
+							</f:formElements>
+						</f:FormContainer>
+						
+						<!-- Right Column: GR Details -->
+						<f:FormContainer>
+							<f:formElements>
+								
+								<!-- Goods Receipt Number -->
+								<f:FormElement label="{i18n>grLabel}">
+									<f:fields>
+										<Text text="{MatDoc}" />
+									</f:fields>
+								</f:FormElement>
+								
+								<!-- User Information -->
+								<f:FormElement label="{i18n>usernameLabel}">
+									<f:fields>
+										<Text text="{UsernameFull} ({Username})" />
+									</f:fields>
+								</f:FormElement>
+								
+							</f:formElements>
+						</f:FormContainer>
+						
+					</f:formContainers>
+				</f:Form>
+				
+				<!-- ========================================== -->
+				<!-- Cancellation Message Strip (Edit Mode Only)-->
+				<!-- ========================================== -->
+				<MessageStrip
+					class="sapUiSmallMarginBeginEnd sapUiSmallMarginTopBottom"
+					type="{= ${viewModel>/hasSelection} ? 'Information' : 'Warning'}"
+					showIcon="true"
+					text="{= ${viewModel>/hasSelection} ? ${i18n>grCancelMessageWithSelection} : ${i18n>grCancelMessageNoSelection}}"
+					visible="{viewModel>/editMode}" />
+				
+				<!-- ========================================== -->
+				<!-- Goods Receipt Items Table                  -->
+				<!-- ========================================== -->
+				<Table
+					id="itemsTable"
+					alternateRowColors="true"
+					items="{itemModel>/}"
+					selectionChange=".onItemSelectionChanged"
+					growing="false"
+					mode="{= ${viewModel>/editMode} ? 'MultiSelect' : 'None'}">
+					
+					<!-- Table Header Toolbar -->
+					<headerToolbar>
+						<OverflowToolbar>
+							<Title
+								text="{i18n>grItemsTableTitle}"
+								level="H2" />
+							<ToolbarSpacer />
+							<Button
+								icon="sap-icon://overflow"
+								press=".onMorePress"
+								tooltip="{i18n>overflowButtonTooltip}"
+								enabled="{viewModel>/canBeCancelled}" />
+						</OverflowToolbar>
+					</headerToolbar>
+					
+					<!-- Table Columns -->
+					<columns>
+						
+						<!-- PO Item -->
+						<Column
+							hAlign="Left"
+							width="9em">
+							<Label
+								text="{i18n>poItemLabel}"
+								textAlign="Center"
+								wrapping="true" />
+						</Column>
+						
+						<!-- Item Description -->
+						<Column hAlign="Left">
+							<Label
+								text="{i18n>poItemTextLabel}"
+								textAlign="Center"
+								wrapping="true" />
+						</Column>
+						
+						<!-- Header Text -->
+						<Column hAlign="Left">
+							<Label
+								text="{i18n>movtHeaderTextLabel}"
+								textAlign="Center"
+								wrapping="true" />
+						</Column>
+						
+						<!-- Delivery Note -->
+						<Column hAlign="Left">
+							<Label
+								text="{i18n>movtDelNoteLabel}"
+								textAlign="Center"
+								wrapping="true" />
+						</Column>
+						
+						<!-- Quantity Received -->
+						<Column hAlign="Center">
+							<Label
+								text="{i18n>movtQuantityRecLabel}"
+								textAlign="Center"
+								wrapping="true" />
+						</Column>
+						
+						<!-- Receipt Date -->
+						<Column hAlign="Center">
+							<Label
+								text="{i18n>movtRecDateLabel}"
+								textAlign="Center"
+								wrapping="true" />
+						</Column>
+						
+						<!-- Status -->
+						<Column hAlign="Center">
+							<Label
+								text="{i18n>movtStatusLabel}"
+								textAlign="Center"
+								wrapping="true" />
+						</Column>
+						
+					</columns>
+					
+					<!-- Table Items -->
+					<items>
+						<ColumnListItem
+							selected="{itemModel>Selected}"
+							highlight="{itemModel>ValueState}">
+							<cells>
+								
+								<!-- PO Item Number -->
+								<Text
+									text="{path:'itemModel>PoItem', formatter: '.formatter.removeLeadingZero'}" />
+								
+								<!-- Item Description -->
+								<Text
+									text="{itemModel>ShortText}" />
+								
+								<!-- Header Text -->
+								<Text
+									text="{itemModel>HeaderTxt}" />
+								
+								<!-- Delivery Note / Reference Document -->
+								<Text
+									text="{itemModel>RefDocNo}" />
+								
+								<!-- Quantity Received -->
+								<Text
+									text="{path: 'itemModel>EntryQnt', type: 'sap.ui.model.odata.type.Decimal', formatOptions: {decimals: 3}, constraints:{scale: 'variable'}}" />
+								
+								<!-- Receipt Date -->
+								<Text
+									text="{path: 'itemModel>DocDate', type: 'sap.ui.model.type.Date', formatOptions: {pattern:'dd.MM.yyyy', strictParsing:true, UTC: true}}" />
+								
+								<!-- Status -->
+								<ObjectStatus
+									text="{itemModel>Status}"
+									state="{itemModel>ValueState}" />
+								
+							</cells>
+						</ColumnListItem>
+					</items>
+					
+				</Table>
+				
+			</VBox>
+		</content>
+		
+		<!-- ========================================== -->
+		<!-- Page Footer                                -->
+		<!-- ========================================== -->
+		<footer>
+			<OverflowToolbar>
+				
+				<!-- Messages Button (Edit Mode Only) -->
+				<Button
+					id="messagesButton"
+					icon="{viewModel>/messageButtonIcon}"
+					enabled="true"
+					text="{= ${message>/}.length === 0 ? '' : ${message>/}.length}"
+					tooltip="{i18n>grMessagesButtonTooltip}"
+					type="{viewModel>/messageButtonType}"
+					visible="{viewModel>/editMode}"
+					press=".onMessagePopoverPress" />
+				
+				<ToolbarSpacer />
+				
+				<!-- Submit Button (Edit Mode Only) -->
+				<Button
+					press=".onSubmitConfirm"
+					type="Emphasized"
+					text="{i18n>poGrSubmitButtonText}"
+					tooltip="{= ${viewModel>/hasSelection} ? ${i18n>cancelGrButtonTooltip} : ${i18n>cancelGrNoSelectionTooltip}}"
+					enabled="{= ${viewModel>/bound} &amp;&amp; ${viewModel>/hasSelection} &amp;&amp; ${viewModel>/editMode}}"
+					visible="{viewModel>/editMode}" />
+				
+			</OverflowToolbar>
+		</footer>
+		
+	</Page>
+	
 </mvc:View>
