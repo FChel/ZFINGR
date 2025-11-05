@@ -21,6 +21,9 @@
 define view ZI_FIN_GR_POASSETS
   as select from ekkn
     inner join ekko on ekkn.ebeln = ekko.ebeln
+    left outer join anla on  anla.bukrs = ekko.bukrs
+                         and anla.anln1 = ekkn.anln1
+                         and anla.anln2 = ekkn.anln2    
 {
   key ekkn.ebeln as PurchaseOrder,
   key ekkn.ebelp as PurchaseOrderItem,
@@ -32,6 +35,7 @@ define view ZI_FIN_GR_POASSETS
       ekkn.kokrs as ControllingArea,
       ekkn.kostl as CostCenter,
       ekkn.aufnr as InternalOrder,
-      ekkn.ps_psp_pnr as WBSElement
+      ekkn.ps_psp_pnr as WBSElement,
+      anla.anlkl as AssetClass
 }
-where anln1 != ''
+where ekkn.anln1 != ''
