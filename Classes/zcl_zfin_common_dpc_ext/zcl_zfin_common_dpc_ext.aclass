@@ -22,6 +22,9 @@ CLASS ZCL_ZFIN_COMMON_DPC_EXT IMPLEMENTATION.
       lo_message_container type ref to /iwbep/if_message_container,
       l_message            type string.
 
+*--- message container setup
+  lo_message_container = mo_context->get_message_container( ).
+
 *===> read the supplied data
     io_data_provider->read_entry_data(
       importing
