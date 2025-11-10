@@ -53,7 +53,7 @@ sap.ui.define([
 
 		/**
 		 * Controller cleanup.
-		 * Destroys the value help dialog if it exists.
+		 * Destroys the value help dialogue if it exists.
 		 * @public
 		 */
 		onExit: function () {
@@ -80,9 +80,8 @@ sap.ui.define([
 			}.bind(this));
 		},
 
-
 		/**
-		 * Handles the no-PO route event (displays PO selection dialog).
+		 * Handles the no-PO route event (displays PO selection dialogue).
 		 * @private
 		 * @param {sap.ui.base.Event} oEvent The route matched event
 		 */
@@ -269,7 +268,7 @@ sap.ui.define([
 		},
 
 		/**
-		 * Shows an error message and navigates away.
+		 * Shows an error message using message button and navigates away.
 		 * @private
 		 * @param {string} sMessageKey The i18n message key
 		 * @param {boolean} [bIsFormattedText=false] Whether to use FormattedText
@@ -277,15 +276,30 @@ sap.ui.define([
 		_showErrorAndNavigate: function (sMessageKey, bIsFormattedText) {
 			var oController = this;
 			var sMessage = this.getResourceBundle().getText(sMessageKey);
-			var oMessage = bIsFormattedText ? new FormattedText("", { htmlText: sMessage }) : sMessage;
-
-			MessageBox.error(oMessage, {
-				title: this.getResourceBundle().getText("errorTitle"),
-				initialFocus: null,
-				onClose: function () {
-					oController._onNoPO();
+			
+			// Add error message to message manager
+			sap.ui.getCore().getMessageManager().removeAllMessages();
+			sap.ui.getCore().getMessageManager().addMessages(new Message({
+				message: sMessage,
+				type: MessageType.Error,
+				processor: this.getView().getModel()
+			}));
+			
+			// Update message button state
+			var oViewModel = this.getModel("viewModel");
+			oViewModel.setProperty("/messageButtonType", this.getMessageButtonType());
+			oViewModel.setProperty("/messageButtonIcon", this.getMessageButtonIcon());
+			
+			// Navigate to PO selection
+			this._onNoPO();
+			
+			// Open message popover after a short delay to allow view to load
+			setTimeout(function() {
+				var oButton = oController.byId("messagesButton");
+				if (oButton) {
+					oButton.firePress();
 				}
-			});
+			}, 300);
 		},
 
 		/**
@@ -327,9 +341,8 @@ sap.ui.define([
 			// Clear messages
 			sap.ui.getCore().getMessageManager().removeAllMessages();
 			
-		    // Set focus
-		    this._setFocusOnMovements();			
-			
+			// Set focus
+			this._setFocusOnMovements();
 		},
 
 		/**
@@ -337,9 +350,9 @@ sap.ui.define([
 		 * @private
 		 */
 		_setFocusOnMovements: function() {
-		    var oController = this;
-		    var oMovementsTable = oController.byId("movementsTable");
-		    oMovementsTable.focus();
+			var oController = this;
+			var oMovementsTable = oController.byId("movementsTable");
+			oMovementsTable.focus();
 		},
 		
 		/* =========================================================== */
@@ -685,7 +698,7 @@ sap.ui.define([
 				var oButton = this.byId("messagesButton");
 				oButton.firePress(oButton);
 			} else {
-				this._handleWarningsAndConfirm(oData, oResult, bDuplicateWarning, false, "");
+				this._handleWarningsAndConfirm(oData, oResult, bDuplicateWarning);
 			}
 
 			oViewModel.setProperty("/messageButtonType", this.getMessageButtonType());
@@ -698,30 +711,22 @@ sap.ui.define([
 		 * @param {object} oData The data object
 		 * @param {object} oResult The result object
 		 * @param {boolean} bDuplicateWarning Whether there is a duplicate warning
-		 * @param {boolean} bVimBalanceWarning Whether there is a VIM balance warning
-		 * @param {string} sVimBalanceWarningMessage The VIM warning message
 		 */
-		_handleWarningsAndConfirm: function (oData, oResult, bDuplicateWarning, bVimBalanceWarning, sVimBalanceWarningMessage) {
-			var oController = this;
-
+		_handleWarningsAndConfirm: function (oData, oResult, bDuplicateWarning) {
 			if (bDuplicateWarning) {
-				this._showDuplicateWarning(oData, oResult, bVimBalanceWarning, sVimBalanceWarningMessage);
-			} else if (bVimBalanceWarning) {
-				this._vimBalanceWarning(oData, sVimBalanceWarningMessage);
+				this._showDuplicateWarning(oData, oResult);
 			} else {
 				this._confirmGRPost(oData);
 			}
 		},
 
 		/**
-		 * Shows duplicate warning dialog.
+		 * Shows duplicate warning dialogue.
 		 * @private
 		 * @param {object} oData The data object
 		 * @param {object} oResult The result object
-		 * @param {boolean} bVimBalanceWarning Whether there is a VIM balance warning
-		 * @param {string} sVimBalanceWarningMessage The VIM warning message
 		 */
-		_showDuplicateWarning: function (oData, oResult, bVimBalanceWarning, sVimBalanceWarningMessage) {
+		_showDuplicateWarning: function (oData, oResult) {
 			var oController = this;
 			var sText = this.getResourceBundle().getText("duplicateWarningText1", [oResult.MaterialDocuments.results.length]);
 
@@ -738,30 +743,6 @@ sap.ui.define([
 				actions: [MessageBox.Action.OK, MessageBox.Action.CANCEL],
 				onClose: function (sAction) {
 					if (sAction === MessageBox.Action.OK) {
-						if (bVimBalanceWarning) {
-							oController._vimBalanceWarning(oData, sVimBalanceWarningMessage);
-						} else {
-							oController._confirmGRPost(oData);
-						}
-					}
-				}
-			});
-		},
-
-		/**
-		 * Shows VIM balance warning dialog.
-		 * @private
-		 * @param {object} oData The data object
-		 * @param {string} sMessage The warning message
-		 */
-		_vimBalanceWarning: function (oData, sMessage) {
-			var oController = this;
-			MessageBox.warning(sMessage, {
-				title: this.getResourceBundle().getText("vimBalanceWarningTitle"),
-				initialFocus: null,
-				actions: [MessageBox.Action.OK, MessageBox.Action.CANCEL],
-				onClose: function (sAction) {
-					if (sAction === MessageBox.Action.OK) {
 						oController._confirmGRPost(oData);
 					}
 				}
@@ -769,7 +750,7 @@ sap.ui.define([
 		},
 
 		/**
-		 * Shows final confirmation dialog before posting.
+		 * Shows final confirmation dialogue before posting.
 		 * @private
 		 * @param {object} oData The data object
 		 */
@@ -842,31 +823,26 @@ sap.ui.define([
 		},
 
 		/**
-		 * Shows error dialog after post failure.
+		 * Shows error using message button after post failure.
 		 * @private
 		 * @param {object} oResult The result object
-		 * @param {Array} aMessage Array of messages
-		 */
+		 * @param {Array} aMessage Array of messages		 */
 		_showPostErrorDialog: function (oResult, aMessage) {
-			var sText = this.getResourceBundle().getText("errorText1");
-
-			for (var i = 0; i < aMessage.length; i++) {
-				if (aMessage[i].type === "Error") {
-					sText += aMessage[i].message + " (" + aMessage[i].code + ").<br>";
-				}
+			// Errors are already in the message manager from the backend response
+			// Just update the message button state and open the popover
+			var oViewModel = this.getModel("viewModel");
+			oViewModel.setProperty("/messageButtonType", this.getMessageButtonType());
+			oViewModel.setProperty("/messageButtonIcon", this.getMessageButtonIcon());
+			
+			// Automatically open the message popover to show the errors
+			var oButton = this.byId("messagesButton");
+			if (oButton) {
+				oButton.firePress();
 			}
-			sText += this.getResourceBundle().getText("errorText2");
-
-			var oFormattedText = new FormattedText("", { htmlText: sText });
-
-			MessageBox.error(oFormattedText, {
-				title: this.getResourceBundle().getText("errorTitle"),
-				initialFocus: null
-			});
 		},
 
 		/**
-		 * Shows success dialog after successful post.
+		 * Shows success dialogue after successful post.
 		 * @private
 		 * @param {object} oResult The result object
 		 * @param {sap.ui.model.json.JSONModel} oViewModel The view model
@@ -887,7 +863,7 @@ sap.ui.define([
 		},
 
 		/**
-		 * Creates and displays the rating dialog.
+		 * Creates and displays the rating dialogue.
 		 * @private
 		 * @param {string} sText The success message text
 		 * @param {object} oResult The result object
@@ -918,7 +894,7 @@ sap.ui.define([
 							new sap.m.Label({ text: this.getResourceBundle().getText("ratingLabel") }),
 							new sap.m.RatingIndicator({
 								maxValue: 5,
-								value: "{/Rating}",
+				value: "{/Rating}",
 								visualMode: sap.m.RatingIndicatorVisualMode.Full
 							}),
 							new sap.m.Label({ text: this.getResourceBundle().getText("feedbackLabel") }),
@@ -950,10 +926,10 @@ sap.ui.define([
 
 		/**
 		 * Handles rating submission.
-		 * After successful GR creation, returns user to PO selection dialog.
+		 * After successful GR creation, returns user to PO selection dialogue.
 		 * @private
 		 * @param {sap.ui.base.Event} oEvent The event object
-		 * @param {sap.m.Dialog} dialog The dialog instance
+		 * @param {sap.m.Dialog} dialog The dialogue instance
 		 * @param {sap.ui.model.json.JSONModel} oViewModel The view model
 		 */
 		_handleRatingSubmission: function (oEvent, dialog, oViewModel) {
@@ -983,7 +959,7 @@ sap.ui.define([
 			ratingPromise.then(function () {
 				dialog.setBusy(false);
 				
-				// Close rating dialog first, then show PO select dialog
+				// Close rating dialogue first, then show PO select dialogue
 				dialog.attachEventOnce("afterClose", function() {
 					// Reset the view to clear any posted GR data
 					oController._resetView();
@@ -991,7 +967,7 @@ sap.ui.define([
 					// Clear the PO input field
 					oController.getModel("viewModel").setProperty("/poSelectInput", "");
 					
-					// Open PO selection dialog for next GR
+					// Open PO selection dialogue for next GR
 					oController.getModel().metadataLoaded().then(function () {
 						oController.getPOSelectDialog().open();
 					});
@@ -1056,7 +1032,7 @@ sap.ui.define([
 		/* =========================================================== */
 
 		/**
-		 * Opens the asset detail dialog.
+		 * Opens the asset detail dialogue.
 		 * @public
 		 * @param {sap.ui.base.Event} oEvent The event object
 		 */
@@ -1112,7 +1088,7 @@ sap.ui.define([
 		},
 
 		/**
-		 * Updates asset detail and closes the dialog.
+		 * Updates asset detail and closes the dialogue.
 		 * @public
 		 */
 		onAssetDetailUpdate: function () {
@@ -1123,28 +1099,38 @@ sap.ui.define([
 			var oData = this.getModel().getObject(oBindingContext.getPath());
 
 			var oModel = this.getOwnerComponent().getModel();
+			var oController = this;
+			
 			oModel.create("/Assets", oData, {
 				success: function (oResult, oResponse) {
 					oViewModel.setProperty("/busy", false);
 
-					var aMessages = this.getModel("message").oData;
+					var aMessages = oController.getModel("message").oData;
 					var oMessage = aMessages[0];
 
 					if (oMessage.type === "Success") {
-						this.getAssetDetailDialog().close();
+						oController.getAssetDetailDialog().close();
 						sap.m.MessageToast.show(oMessage.message, {
 							my: sap.ui.core.Popup.Dock.CenterCenter,
 							at: sap.ui.core.Popup.Dock.CenterCenter,
 							width: "20em"
 						});
 					} else {
-						this.getAssetDetailDialog().close();
-						MessageBox.error(oMessage.message, {
-							title: this.getResourceBundle().getText("errorTitle"),
-							initialFocus: null
-						});
+						// Error is already in message manager from backend
+						// Close dialogue and show in message button
+						oController.getAssetDetailDialog().close();
+						
+						// Update message button state
+						oViewModel.setProperty("/messageButtonType", oController.getMessageButtonType());
+						oViewModel.setProperty("/messageButtonIcon", oController.getMessageButtonIcon());
+						
+						// Open message popover
+						var oButton = oController.byId("messagesButton");
+						if (oButton) {
+							oButton.firePress();
+						}
 					}
-				}.bind(this),
+				},
 				error: function (oError) {
 					oViewModel.setProperty("/busy", false);
 				}
@@ -1152,7 +1138,7 @@ sap.ui.define([
 		},
 
 		/**
-		 * Closes the asset detail dialog without saving.
+		 * Closes the asset detail dialogue without saving.
 		 * @public
 		 */
 		onAssetDetailCancel: function () {
@@ -1160,9 +1146,9 @@ sap.ui.define([
 		},
 
 		/**
-		 * Gets or creates the asset detail dialog.
+		 * Gets or creates the asset detail dialogue.
 		 * @private
-		 * @returns {sap.m.Dialog} The asset detail dialog
+		 * @returns {sap.m.Dialog} The asset detail dialogue
 		 */
 		getAssetDetailDialog: function () {
 			if (!this.oAssetDetails) {
@@ -1181,7 +1167,7 @@ sap.ui.define([
 		/* =========================================================== */
 
 		/**
-		 * Handles PO select dialog OK button.
+		 * Handles PO select dialogue OK button.
 		 * Validates input and navigates to PO display.
 		 * @public
 		 */
@@ -1189,16 +1175,35 @@ sap.ui.define([
 			var sPoNumber = this.getModel("viewModel").getProperty("/poSelectInput");
 
 			if (sPoNumber === "") {
-				MessageBox.error(this.getResourceBundle().getText("poBlankErrorText"), {
-					title: this.getResourceBundle().getText("errorTitle"),
-					initialFocus: null,
-					onClose: function (sAction) {}
+				// Add error message to message manager
+				sap.ui.getCore().getMessageManager().removeAllMessages();
+				sap.ui.getCore().getMessageManager().addMessages(new Message({
+					message: this.getResourceBundle().getText("poBlankErrorText"),
+					type: MessageType.Error,
+					processor: this.getView().getModel()
+				}));
+				
+				// Update message button state
+				var oViewModel = this.getModel("viewModel");
+				oViewModel.setProperty("/messageButtonType", this.getMessageButtonType());
+				oViewModel.setProperty("/messageButtonIcon", this.getMessageButtonIcon());
+				
+				// Close dialogue and show error in message button
+				var oDialog = this.getPOSelectDialog();
+				var oController = this;
+				oDialog.attachEventOnce("afterClose", function() {
+					// Open message popover after dialogue closes
+					var oButton = oController.byId("messagesButton");
+					if (oButton) {
+						oButton.firePress();
+					}
 				});
+				oDialog.close();
 			} else {
 				var oDialog = this.getPOSelectDialog();
 				var oRouter = this.getRouter();
 				
-				// Close dialog first, then navigate after it's closed
+				// Close dialogue first, then navigate after it is closed
 				oDialog.attachEventOnce("afterClose", function() {
 					oRouter.navTo("po1", {
 						objectId: sPoNumber
@@ -1210,15 +1215,15 @@ sap.ui.define([
 		},
 
 		/**
-		 * Handles PO select dialog Cancel button.
-		 * Closes the dialog and navigates home.
+		 * Handles PO select dialogue Cancel button.
+		 * Closes the dialogue and navigates home.
 		 * @public
 		 */
 		onPoSelectCancel: function () {
 			var oDialog = this.getPOSelectDialog();
 			var oController = this;
 			
-			// Close dialog first, then navigate after it's closed
+			// Close dialogue first, then navigate after it is closed
 			oDialog.attachEventOnce("afterClose", function() {
 				oController.onNavHome();
 			});
@@ -1227,9 +1232,9 @@ sap.ui.define([
 		},
 
 		/**
-		 * Gets or creates the PO select dialog.
+		 * Gets or creates the PO select dialogue.
 		 * @private
-		 * @returns {sap.m.Dialog} The PO select dialog
+		 * @returns {sap.m.Dialog} The PO select dialogue
 		 */
 		getPOSelectDialog: function () {
 			if (!this.oPOSelectDialog) {
@@ -1248,7 +1253,7 @@ sap.ui.define([
 		/* =========================================================== */
 
 		/**
-		 * Opens the PO value help dialog.
+		 * Opens the PO value help dialogue.
 		 * @public
 		 * @param {sap.ui.base.Event} oEvent The event object
 		 */
@@ -1276,7 +1281,7 @@ sap.ui.define([
 		},
 
 		/**
-		 * Sets up the value help dialog.
+		 * Sets up the value help dialogue.
 		 * @private
 		 * @param {sap.ui.model.json.JSONModel} oColModel Column model
 		 * @param {object} oResourceBundle Resource bundle
