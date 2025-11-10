@@ -14,45 +14,7 @@
 		busyIndicatorDelay="{viewModel>/delay}"
 		showFooter="true"
 		floatingFooter="true">
-		
-		<!-- Custom Header -->
-		<customHeader>
-			<Bar>
-				<contentLeft>
-					<Button 
-						icon="sap-icon://nav-back" 
-						press="._onNavBack"
-						tooltip="{i18n>navBackButtonTooltip}" 
-						enabled="{= !${viewModel>/isMfp}}" />
-					<Button 
-						icon="sap-icon://home" 
-						press="._onNavHome"
-						tooltip="{i18n>navHomeButtonTooltip}" />
-				</contentLeft>
 				
-				<contentMiddle>
-					<Title text="{i18n>poPageTitle}" />
-				</contentMiddle>
-				
-				<contentRight>
-					<Button 
-						icon="sap-icon://sys-help" 
-						press=".onNavHelp"
-						tooltip="{i18n>navHelpButtonTooltip}" />
-					<Button 
-						icon="sap-icon://customer" 
-						text="{userModel>/FullName}"
-						press=".onToggleUserPopover" 
-						tooltip="{i18n>userDetailsButtonTooltip}" />
-					<Button 
-						icon="sap-icon://overflow" 
-						press=".onOverflow"
-						tooltip="{i18n>overflowButtonTooltip}" 
-						enabled="false" />
-				</contentRight>
-			</Bar>
-		</customHeader>
-		
 		<!-- Page Content -->
 		<content>
 			<VBox>
@@ -65,8 +27,8 @@
 						
 						<f:layout>
 							<f:ResponsiveGridLayout 
-								columnsXL="{=${viewModel>/isVim} ? 3 : 2}"
-								columnsL="{=${viewModel>/isVim} ? 3 : 2}" 
+								columnsXL="2"
+								columnsL="2" 
 								columnsM="2"
 								singleContainerFullSize="true" />
 						</f:layout>
@@ -103,36 +65,6 @@
 								</f:formElements>
 							</f:FormContainer>
 							
-							<!-- Third Container: VIM Information (visible only for VIM) -->
-							<f:FormContainer visible="{viewModel>/isVim}">
-								<f:formElements>
-									<f:FormElement>
-										<f:fields>
-											<Label 
-												text="{i18n>vimInvoiceAmount}:" 
-												textAlign="Right"
-												wrapping="false" />
-											<ObjectNumber 
-												emphasized="false"
-												number="{parts: [{path: 'VimInvoiceAmount'}, {path:'VimCurrency'}], type:'sap.ui.model.type.Currency', formatOptions:{showMeasure: false}}"
-												unit="{VimCurrency}" />
-										</f:fields>
-									</f:FormElement>
-									
-									<f:FormElement>
-										<f:fields>
-											<Label 
-												text="{i18n>vimUnmatchedAmount}:" 
-												textAlign="Right"
-												wrapping="false" />
-											<ObjectNumber 
-												emphasized="false"
-												number="{parts: [{path: 'VimBalance'}, {path:'VimCurrency'}], type:'sap.ui.model.type.Currency', formatOptions:{showMeasure: false}}"
-												unit="{VimCurrency}" />
-										</f:fields>
-									</f:FormElement>
-								</f:formElements>
-							</f:FormContainer>
 						</f:formContainers>
 					</f:Form>
 				</VBox>
@@ -332,7 +264,6 @@
 									<!-- Header Text -->
 									<Input 
 										fieldGroupIds="inputs" 
-										editable="{= ${viewModel>/isVim} !== true}"
 										change="._onFieldChange"
 										maxLength="25" 
 										placeholder="{i18n>FreetextPlaceholder}" 
@@ -341,7 +272,6 @@
 									<!-- Reference Document Number -->
 									<Input 
 										fieldGroupIds="inputs" 
-										editable="{= ${viewModel>/isVim} !== true}"
 										change="._onFieldChange"
 										maxLength="16" 
 										value="{movtModel>RefDocNo}" 

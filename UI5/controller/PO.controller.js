@@ -23,7 +23,6 @@ sap.ui.define([
 	 * - Movement line management
 	 * - Asset detail management
 	 * - Goods receipt posting
-	 * - VIM integration
 	 * 
 	 * @namespace defence.finance.finux.gr.controller
 	 */
@@ -44,7 +43,6 @@ sap.ui.define([
 			// Route handlers
 			this.getRouter().getRoute("po1").attachPatternMatched(this._onPOMatched, this);
 			this.getRouter().getRoute("po0").attachPatternMatched(this._onNoPO, this);
-			this.getRouter().getRoute("vim").attachPatternMatched(this._onVIMMatched, this);
 
 			// Message manager setup
 			this.registerMessageManager();
@@ -82,20 +80,6 @@ sap.ui.define([
 			}.bind(this));
 		},
 
-		/**
-		 * Handles the VIM route event.
-		 * @private
-		 * @param {sap.ui.base.Event} oEvent The route matched event
-		 */
-		_onVIMMatched: function (oEvent) {
-			this._resetView();
-			this.getModel("viewModel").setProperty("/isVim", true);
-
-			var sObjectId = oEvent.getParameter("arguments").objectId;
-			this.getModel().metadataLoaded().then(function () {
-				this._bindViewVim(sObjectId);
-			}.bind(this));
-		},
 
 		/**
 		 * Handles the no-PO route event (displays PO selection dialog).
@@ -153,11 +137,7 @@ sap.ui.define([
 			if (bInFLP) {
 				this.onNavHome();
 			} else {
-				if (oViewModel.getProperty("/isVim") === true) {
-					history.go(-1);
-				} else {
-					this._onNoPO(oEvent);
-				}
+				this._onNoPO(oEvent);
 			}
 		},
 
@@ -188,9 +168,7 @@ sap.ui.define([
 				messageButtonIcon: "sap-icon://warning2",
 				poCurrency: "",
 				poCompCode: "",
-				hasChanges: false,
-				isVim: false,
-				isMfp: false
+				hasChanges: false
 			});
 			this.setModel(oViewModel, "viewModel");
 		},
@@ -209,24 +187,6 @@ sap.ui.define([
 			var oModel = this.getOwnerComponent().getModel();
 			var sObjectPath = oModel.createKey("/PurchaseOrders", {
 				PoNumber: sPoNumber
-			});
-
-			this._bindElement(sObjectPath);
-
-			if (history.length < 2) {
-				this.getModel("viewModel").setProperty("/isMfp", true);
-			}
-		},
-
-		/**
-		 * Binds the view for VIM scenarios.
-		 * @private
-		 * @param {string} sObjectId The PO number
-		 */
-		_bindViewVim: function (sObjectId) {
-			var oModel = this.getOwnerComponent().getModel();
-			var sObjectPath = oModel.createKey("/PurchaseOrders", {
-				PoNumber: sObjectId
 			});
 
 			this._bindElement(sObjectPath);
@@ -405,15 +365,14 @@ sap.ui.define([
 		 */
 		onAddMovtLine: function (oEvent) {
 			var oViewModel = this.getModel("viewModel");
-			var bIsVim = oViewModel.getProperty("/isVim");
 			var oDoc = this.getView().getBindingContext() ? this.getView().getBindingContext().getObject() : {};
 
 			this.getModel("movtModel").getProperty("/").push({
 				MovtId: oViewModel.getProperty("/maxMovtLineId") + 1,
 				PoItem: "",
 				PoItemVs: ValueState.None,
-				RefDocNo: bIsVim ? oDoc.Invnumber : "",
-				HeaderTxt: bIsVim ? oDoc.Vimdocid : "",
+				RefDocNo: "",
+				HeaderTxt: "",
 				DocDate: null,
 				IsAsset: false,
 				EntryQnt: "",
@@ -712,8 +671,6 @@ sap.ui.define([
 			var aMessage = this.getModel("message").oData;
 			var bError = false;
 			var bDuplicateWarning = false;
-			var bVimBalanceWarning = false;
-			var sVimBalanceWarningMessage = "";
 
 			for (var i = 0; i < aMessage.length; i++) {
 				if (aMessage[i].type === "Error") {
@@ -722,17 +679,13 @@ sap.ui.define([
 				if (aMessage[i].code === "ZFSS_GR/003") {
 					bDuplicateWarning = true;
 				}
-				if (aMessage[i].code === "ZFSS_GR/011") {
-					bVimBalanceWarning = true;
-					sVimBalanceWarningMessage = aMessage[i].message;
-				}
 			}
 
 			if (bError) {
 				var oButton = this.byId("messagesButton");
 				oButton.firePress(oButton);
 			} else {
-				this._handleWarningsAndConfirm(oData, oResult, bDuplicateWarning, bVimBalanceWarning, sVimBalanceWarningMessage);
+				this._handleWarningsAndConfirm(oData, oResult, bDuplicateWarning, false, "");
 			}
 
 			oViewModel.setProperty("/messageButtonType", this.getMessageButtonType());
@@ -962,11 +915,6 @@ sap.ui.define([
 						items: [
 							new FormattedText({ htmlText: sText }),
 							new sap.m.Label({ text: "" }),
-							new FormattedText({
-								visible: oViewModel.getProperty("/isVim"),
-								htmlText: this.getResourceBundle().getText("vimSuccess")
-							}),
-							new sap.m.Label({ visible: oViewModel.getProperty("/isVim"), text: "" }),
 							new sap.m.Label({ text: this.getResourceBundle().getText("ratingLabel") }),
 							new sap.m.RatingIndicator({
 								maxValue: 5,
@@ -1042,10 +990,6 @@ sap.ui.define([
 					
 					// Clear the PO input field
 					oController.getModel("viewModel").setProperty("/poSelectInput", "");
-					
-					// For VIM: Show dialog instead of redirecting
-					// This allows user to create another GR or return to FLP
-					// If VIM redirect is required, user can click Cancel
 					
 					// Open PO selection dialog for next GR
 					oController.getModel().metadataLoaded().then(function () {
