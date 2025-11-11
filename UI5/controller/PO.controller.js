@@ -1,16 +1,20 @@
 sap.ui.define([
 	"./BaseController",
 	"../model/formatter",
+	"sap/m/FormattedText",
+	"sap/m/MessageBox",
+	"sap/m/Dialog",
+	"sap/m/Button",
+	"sap/m/Text",
+	"sap/m/ButtonType",	
 	"sap/ui/model/json/JSONModel",
 	"sap/ui/model/Filter",
 	"sap/ui/model/FilterOperator",
-	"sap/m/FormattedText",
-	"sap/m/MessageBox",
 	"sap/ui/core/message/Message",
 	"sap/ui/core/library",
 	"sap/ui/events/KeyCodes",
 	"sap/ui/core/syncStyleClass"
-], function (BaseController, formatter, JSONModel, Filter, FilterOperator, FormattedText, MessageBox, Message, library, KeyCodes, syncStyleClass) {
+	], function (BaseController, formatter, FormattedText, MessageBox, Dialog, Button, Text, ButtonType, JSONModel, Filter, FilterOperator, Message, library, KeyCodes, syncStyleClass) {
 	"use strict";
 
 	var MessageType = library.MessageType;
@@ -170,6 +174,8 @@ sap.ui.define([
 				hasChanges: false
 			});
 			this.setModel(oViewModel, "viewModel");
+
+			sap.ui.getCore().getMessageManager().removeAllMessages();
 		},
 
 		/**
@@ -277,29 +283,46 @@ sap.ui.define([
 			var oController = this;
 			var sMessage = this.getResourceBundle().getText(sMessageKey);
 			
-			// Add error message to message manager
-			sap.ui.getCore().getMessageManager().removeAllMessages();
-			sap.ui.getCore().getMessageManager().addMessages(new Message({
-				message: sMessage,
-				type: MessageType.Error,
-				processor: this.getView().getModel()
-			}));
+			// Create dialog content
+			var oContent = bIsFormattedText ? 
+				new FormattedText("", { htmlText: sMessage }) : 
+				new Text({ text: sMessage });
 			
-			// Update message button state
-			var oViewModel = this.getModel("viewModel");
-			oViewModel.setProperty("/messageButtonType", this.getMessageButtonType());
-			oViewModel.setProperty("/messageButtonIcon", this.getMessageButtonIcon());
-			
-			// Navigate to PO selection
-			this._onNoPO();
-			
-			// Open message popover after a short delay to allow view to load
-			setTimeout(function() {
-				var oButton = oController.byId("messagesButton");
-				if (oButton) {
-					oButton.firePress();
+			// Create error dialog instance
+			var oErrorDialog = new Dialog({
+				title: this.getResourceBundle().getText("errorTitle"),
+				type: "Message",
+				state: "Error",
+				content: oContent,
+				beginButton: new Button({
+					text: "OK",
+					type: ButtonType.Emphasized,
+					press: function () {
+						this.getParent().close();
+					}
+				}),
+				afterClose: function() {
+					// Clean up this dialog
+					oErrorDialog.destroy();
+					
+					// se setTimeout to let dialog fully close
+					setTimeout(function() {
+						// Reset view
+						oController._resetView();
+						
+						// Clear messages
+						sap.ui.getCore().getMessageManager().removeAllMessages();
+						
+						// Open PO dialog when ready
+						oController.getModel().metadataLoaded().then(function () {
+							oController.getPOSelectDialog().open();
+						});
+					}, 700);
 				}
-			}, 300);
+			});
+			
+			syncStyleClass("sapUiSizeCompact", this.getView(), oErrorDialog);
+			oErrorDialog.open();
 		},
 
 		/**
@@ -340,7 +363,7 @@ sap.ui.define([
 
 			// Clear messages
 			sap.ui.getCore().getMessageManager().removeAllMessages();
-			
+
 			// Set focus
 			this._setFocusOnMovements();
 		},
@@ -354,7 +377,7 @@ sap.ui.define([
 			var oMovementsTable = oController.byId("movementsTable");
 			oMovementsTable.focus();
 		},
-		
+
 		/* =========================================================== */
 		/* Field Change Tracking                                       */
 		/* =========================================================== */
@@ -689,7 +712,7 @@ sap.ui.define([
 				if (aMessage[i].type === "Error") {
 					bError = true;
 				}
-				if (aMessage[i].code === "ZFSS_GR/003") {
+				if (aMessage[i].code === "ZFIN_GR/003") {
 					bDuplicateWarning = true;
 				}
 			}
@@ -833,7 +856,7 @@ sap.ui.define([
 			var oViewModel = this.getModel("viewModel");
 			oViewModel.setProperty("/messageButtonType", this.getMessageButtonType());
 			oViewModel.setProperty("/messageButtonIcon", this.getMessageButtonIcon());
-			
+
 			// Automatically open the message popover to show the errors
 			var oButton = this.byId("messagesButton");
 			if (oButton) {
@@ -881,7 +904,7 @@ sap.ui.define([
 
 			var oRateModel = new JSONModel(oRating);
 
-			var dialog = new sap.m.Dialog({
+			var dialog = new Dialog({
 				title: this.getResourceBundle().getText("successTitle"),
 				type: "Message",
 				state: "Success",
@@ -894,7 +917,7 @@ sap.ui.define([
 							new sap.m.Label({ text: this.getResourceBundle().getText("ratingLabel") }),
 							new sap.m.RatingIndicator({
 								maxValue: 5,
-				value: "{/Rating}",
+								value: "{/Rating}",
 								visualMode: sap.m.RatingIndicatorVisualMode.Full
 							}),
 							new sap.m.Label({ text: this.getResourceBundle().getText("feedbackLabel") }),
@@ -904,19 +927,19 @@ sap.ui.define([
 								placeholder: "Add " + this.getResourceBundle().getText("feedbackLabel"),
 								rows: 3
 							})
-						]
+							]
 					})
-				],
-				beginButton: new sap.m.Button({
-					text: "Ok",
-					type: sap.m.ButtonType.Emphasized,
-					press: function (oEvent1) {
-						oController._handleRatingSubmission(oEvent1, dialog, oViewModel);
+					],
+					beginButton: new sap.m.Button({
+						text: "Ok",
+						type: sap.m.ButtonType.Emphasized,
+						press: function (oEvent1) {
+							oController._handleRatingSubmission(oEvent1, dialog, oViewModel);
+						}
+					}),
+					afterClose: function () {
+						dialog.destroy();
 					}
-				}),
-				afterClose: function () {
-					dialog.destroy();
-				}
 			});
 
 			dialog.addStyleClass("sapUiSizeCompact");
@@ -958,21 +981,21 @@ sap.ui.define([
 
 			ratingPromise.then(function () {
 				dialog.setBusy(false);
-				
+
 				// Close rating dialogue first, then show PO select dialogue
 				dialog.attachEventOnce("afterClose", function() {
 					// Reset the view to clear any posted GR data
 					oController._resetView();
-					
+
 					// Clear the PO input field
 					oController.getModel("viewModel").setProperty("/poSelectInput", "");
-					
+
 					// Open PO selection dialogue for next GR
 					oController.getModel().metadataLoaded().then(function () {
 						oController.getPOSelectDialog().open();
 					});
 				});
-				
+
 				dialog.close();
 			});
 		},
@@ -1016,15 +1039,15 @@ sap.ui.define([
 		 */
 		_addMessage: function (sMessageKey, sMessageType, aParams) {
 			var sMessage = aParams ?
-				this.getResourceBundle().getText(sMessageKey, aParams) :
-				this.getResourceBundle().getText(sMessageKey);
+					this.getResourceBundle().getText(sMessageKey, aParams) :
+						this.getResourceBundle().getText(sMessageKey);
 
-			var oMessage = new Message({
-				message: sMessage,
-				type: sMessageType
-			});
+					var oMessage = new Message({
+						message: sMessage,
+						type: sMessageType
+					});
 
-			sap.ui.getCore().getMessageManager().addMessages(oMessage);
+					sap.ui.getCore().getMessageManager().addMessages(oMessage);
 		},
 
 		/* =========================================================== */
@@ -1100,7 +1123,7 @@ sap.ui.define([
 
 			var oModel = this.getOwnerComponent().getModel();
 			var oController = this;
-			
+
 			oModel.create("/Assets", oData, {
 				success: function (oResult, oResponse) {
 					oViewModel.setProperty("/busy", false);
@@ -1119,11 +1142,11 @@ sap.ui.define([
 						// Error is already in message manager from backend
 						// Close dialogue and show in message button
 						oController.getAssetDetailDialog().close();
-						
+
 						// Update message button state
 						oViewModel.setProperty("/messageButtonType", oController.getMessageButtonType());
 						oViewModel.setProperty("/messageButtonIcon", oController.getMessageButtonIcon());
-						
+
 						// Open message popover
 						var oButton = oController.byId("messagesButton");
 						if (oButton) {
@@ -1182,12 +1205,12 @@ sap.ui.define([
 					type: MessageType.Error,
 					processor: this.getView().getModel()
 				}));
-				
+
 				// Update message button state
 				var oViewModel = this.getModel("viewModel");
 				oViewModel.setProperty("/messageButtonType", this.getMessageButtonType());
 				oViewModel.setProperty("/messageButtonIcon", this.getMessageButtonIcon());
-				
+
 				// Close dialogue and show error in message button
 				var oDialog = this.getPOSelectDialog();
 				var oController = this;
@@ -1202,14 +1225,14 @@ sap.ui.define([
 			} else {
 				var oDialog = this.getPOSelectDialog();
 				var oRouter = this.getRouter();
-				
+
 				// Close dialogue first, then navigate after it is closed
 				oDialog.attachEventOnce("afterClose", function() {
 					oRouter.navTo("po1", {
 						objectId: sPoNumber
 					}, false);
 				});
-				
+
 				oDialog.close();
 			}
 		},
@@ -1222,12 +1245,12 @@ sap.ui.define([
 		onPoSelectCancel: function () {
 			var oDialog = this.getPOSelectDialog();
 			var oController = this;
-			
+
 			// Close dialogue first, then navigate after it is closed
 			oDialog.attachEventOnce("afterClose", function() {
 				oController.onNavHome();
 			});
-			
+
 			oDialog.close();
 		},
 
@@ -1273,7 +1296,7 @@ sap.ui.define([
 					{ label: oResourceBundle.getText("vhVendorName"), template: "VendorName", width: "19rem" },
 					{ label: oResourceBundle.getText("vhABN"), template: "Abn" },
 					{ label: oResourceBundle.getText("vhCreateDate"), template: "CreatDate", oType: oDType }
-				]
+					]
 			});
 
 			this._setupValueHelpDialog(oColModel, oResourceBundle);
@@ -1407,9 +1430,9 @@ sap.ui.define([
 		 */
 		_parseDateString: function (sDate) {
 			return new Date(
-				sDate.substr(6, 4),
-				parseInt(sDate.substr(3, 2), 10) - 1,
-				sDate.substr(0, 2)
+					sDate.substr(6, 4),
+					parseInt(sDate.substr(3, 2), 10) - 1,
+					sDate.substr(0, 2)
 			);
 		},
 
