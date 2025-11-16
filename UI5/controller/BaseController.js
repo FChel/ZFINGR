@@ -185,48 +185,6 @@ sap.ui.define([
 		/* =========================================================== */
 
 		/**
-		 * Navigates back to the previous page in browser history.
-		 * @public
-		 */
-		onNavBack: function () {
-			history.go(-1);
-		},
-
-		/**
-		 * Navigates to the help page.
-		 * @public
-		 */
-		onNavHelp: function () {
-			var sHelpUrl = this.getModel("userModel").getData().HelpUrl;
-			sap.m.URLHelper.redirect(sHelpUrl, true);
-		},
-
-		/**
-		 * Navigates to the FLP home or application landing page.
-		 * Handles both FLP and standalone scenarios.
-		 * @public
-		 */
-		onNavHome: function () {
-			var bInFLP = this.getModel("componentModel").getProperty("/inFLP");
-
-			if (bInFLP === true) {
-				var oCrossAppNav = sap.ushell.Container.getService("CrossApplicationNavigation");
-
-				if (window.history.length > 1) {
-					oCrossAppNav.historyBack();
-				} else {
-					oCrossAppNav.toExternal({
-						target: {
-							shellHash: "#Shell-home"
-						}
-					});
-				}
-			} else {
-				window.location.replace("../../../ui2/flp#Shell-home");
-			}
-		},
-
-		/**
 		 * Navigates to the Purchase Order display application.
 		 * @public
 		 * @param {sap.ui.base.Event} oEvent The event object

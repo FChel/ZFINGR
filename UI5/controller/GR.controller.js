@@ -1,6 +1,7 @@
 sap.ui.define([
 	"./BaseController",
 	"../model/formatter",
+	"sap/base/Log",
 	"sap/ui/model/json/JSONModel",
 	"sap/ui/model/Filter",
 	"sap/ui/model/FilterOperator",
@@ -10,7 +11,7 @@ sap.ui.define([
 	"sap/ui/core/library",
 	"sap/ui/events/KeyCodes",
 	"sap/ui/core/syncStyleClass"
-], function (BaseController, formatter, JSONModel, Filter, FilterOperator, FormattedText, MessageBox, Message, library, KeyCodes, syncStyleClass) {
+	], function (BaseController, formatter, Log, JSONModel, Filter, FilterOperator, FormattedText, MessageBox, Message, library, KeyCodes, syncStyleClass) {
 	"use strict";
 
 	var MessageType = library.MessageType;
@@ -193,9 +194,9 @@ sap.ui.define([
 		onMorePress: function (oEvent) {
 			if (!this._actionSheet) {
 				this._actionSheet = sap.ui.xmlfragment(
-					this.getView().getId(),
-					"defence.finance.finux.gr.view.GRMoreActionSheet",
-					this
+						this.getView().getId(),
+						"defence.finance.finux.gr.view.GRMoreActionSheet",
+						this
 				);
 				this.getView().addDependent(this._actionSheet);
 			}
@@ -262,14 +263,14 @@ sap.ui.define([
 		getGRSelectDialog: function () {
 			if (!this.oGRSelectDialog) {
 				this.oGRSelectDialog = sap.ui.xmlfragment(
-					"defence.finance.finux.gr.view.GRSelectDialog",
-					this
+						"defence.finance.finux.gr.view.GRSelectDialog",
+						this
 				);
 				this.getView().addDependent(this.oGRSelectDialog);
 				syncStyleClass(
-					this.getOwnerComponent().getContentDensityClass(),
-					this.getView(),
-					this.oGRSelectDialog
+						this.getOwnerComponent().getContentDensityClass(),
+						this.getView(),
+						this.oGRSelectDialog
 				);
 			}
 			return this.oGRSelectDialog;
@@ -398,7 +399,7 @@ sap.ui.define([
 						template: "EntryQnt",
 						oType: oNType
 					}
-				]
+					]
 			});
 
 			// Create value help dialog if it does not exist
@@ -422,8 +423,8 @@ sap.ui.define([
 		 */
 		_createValueHelpDialog: function (oColModel, oResourceBundle) {
 			this.oValueHelpDialog = sap.ui.xmlfragment(
-				"defence.finance.finux.gr.view.GRValueHelp",
-				this
+					"defence.finance.finux.gr.view.GRValueHelp",
+					this
 			);
 			syncStyleClass("sapUiSizeCompact", this.getView(), this.oValueHelpDialog);
 			this.getView().addDependent(this.oValueHelpDialog);
@@ -493,9 +494,9 @@ sap.ui.define([
 		 */
 		getDateValue: function (sDate) {
 			return new Date(
-				sDate.substr(6, 4),
-				sDate.substr(3, 2) - 1,
-				sDate.substr(0, 2)
+					sDate.substr(6, 4),
+					sDate.substr(3, 2) - 1,
+					sDate.substr(0, 2)
 			);
 		},
 
@@ -516,7 +517,7 @@ sap.ui.define([
 			var oBinding = this.oValueHelpDialog.getTable().getBinding("rows");
 
 			this.oValueHelpDialog.getTable().setNoData(
-				this.getResourceBundle().getText("vhNoData2")
+					this.getResourceBundle().getText("vhNoData2")
 			);
 
 			if (aFilters.length > 0) {
@@ -607,8 +608,8 @@ sap.ui.define([
 			if (sObjectId.length >= this._FULL_OBJECT_ID_LENGTH) {
 				sMatDoc = sObjectId.substring(0, this._MAT_DOC_LENGTH);
 				sDocYear = sObjectId.substring(
-					this._MAT_DOC_LENGTH,
-					this._FULL_OBJECT_ID_LENGTH
+						this._MAT_DOC_LENGTH,
+						this._FULL_OBJECT_ID_LENGTH
 				);
 			} else if (sObjectId.length >= this._MAT_DOC_LENGTH) {
 				sMatDoc = sObjectId.substring(0, this._MAT_DOC_LENGTH);
@@ -667,8 +668,8 @@ sap.ui.define([
 
 			if (!validationResult.isValid) {
 				this._showErrorAndNavigate(
-					validationResult.errorKey,
-					validationResult.isFormatted
+						validationResult.errorKey,
+						validationResult.isFormatted
 				);
 				return;
 			}
@@ -699,7 +700,7 @@ sap.ui.define([
 			}
 
 			if (bEditMode && oGR.Items && oGR.Items[0] &&
-				Number(oGR.Items[0].EntryQnt) < 0) {
+					Number(oGR.Items[0].EntryQnt) < 0) {
 				return {
 					isValid: false,
 					errorKey: "grCancelCancellation",
@@ -711,7 +712,7 @@ sap.ui.define([
 				return {
 					isValid: false,
 					errorKey: bEditMode ? "grNotStandardPo" : "grNotStandardPoDisplay",
-					isFormatted: false
+							isFormatted: false
 				};
 			}
 
@@ -787,16 +788,16 @@ sap.ui.define([
 		_showErrorAndNavigate: function (sMessageKey, bFormatted) {
 			var sText = this.getResourceBundle().getText(sMessageKey);
 			var oMessage = bFormatted ?
-				new FormattedText("", { htmlText: sText }) :
-				sText;
+					new FormattedText("", { htmlText: sText }) :
+						sText;
 
-			MessageBox.error(oMessage, {
-				title: this.getResourceBundle().getText("errorTitle"),
-				initialFocus: null,
-				onClose: function () {
-					this.onNoGR();
-				}.bind(this)
-			});
+					MessageBox.error(oMessage, {
+						title: this.getResourceBundle().getText("errorTitle"),
+						initialFocus: null,
+						onClose: function () {
+							this.onNoGR();
+						}.bind(this)
+					});
 		},
 
 		/**
@@ -934,14 +935,14 @@ sap.ui.define([
 		 */
 		_buildSuccessMessage: function (oResult) {
 			var sText = this.getResourceBundle().getText(
-				"grCancelSuccessText1",
-				[oResult.MatDoc, oResult.PoNumber]
+					"grCancelSuccessText1",
+					[oResult.MatDoc, oResult.PoNumber]
 			);
 
 			for (var i = 0; i < oResult.MaterialDocuments.results.length; i++) {
 				sText += "<br>" + this.getResourceBundle().getText(
-					"grCancelSuccessText2",
-					[oResult.MaterialDocuments.results[i].MatDoc]
+						"grCancelSuccessText2",
+						[oResult.MaterialDocuments.results[i].MatDoc]
 				);
 			}
 
@@ -1000,36 +1001,40 @@ sap.ui.define([
 								placeholder: "Add " + this.getResourceBundle().getText("feedbackLabel"),
 								rows: 3
 							})
-						]
+							]
 					})
-				],
-				beginButton: new sap.m.Button({
-					text: "Ok",
-					type: sap.m.ButtonType.Emphasized,
-					press: function (oEvent1) {
-						var oUpdatedRating = oEvent1.getSource().getModel().getData();
+					],
+					beginButton: new sap.m.Button({
+						text: "Ok",
+						type: sap.m.ButtonType.Emphasized,
+						press: function (oEvent1) {
+							var oUpdatedRating = oEvent1.getSource().getModel().getData();
 
-						// Save rating if provided (fire-and-forget)
-						if (oUpdatedRating.Rating || oUpdatedRating.Comments) {
-							oUpdatedRating.Rating = oUpdatedRating.Rating ?
-								oUpdatedRating.Rating.toString() : "";
+							// Save rating if provided (fire-and-forget)
+							if (oUpdatedRating.Rating || oUpdatedRating.Comments) {
+								oUpdatedRating.Rating = oUpdatedRating.Rating ?
+										oUpdatedRating.Rating.toString() : "";
 
-							this.getModel("common").create("/FeedbackRatings", oUpdatedRating, {
-								error: function (oError) {
-									// Log error but do not block navigation
-									jQuery.sap.log.error("Failed to save feedback rating", oError);
-								}
-							});
-						}
+										this.getModel("common").create("/FeedbackRatings", oUpdatedRating, {
+											error: function (oError) {
+												// Log error but do not block navigation
+												Log.error(
+														"Failed to save feedback rating",
+														oError ? JSON.stringify(oError) : "",
+														"defence.finance.finux.gr.controller.GR"
+												);
+											}
+										});
+							}
 
-						// Close dialog and navigate
-						oEvent1.getSource().getParent().close();
-						this.onNavHome();
-					}.bind(this)
-				}),
-				afterClose: function () {
-					this.destroy();
-				}
+							// Close dialog and navigate
+							oEvent1.getSource().getParent().close();
+							this.onNavHome();
+						}.bind(this)
+					}),
+					afterClose: function () {
+						this.destroy();
+					}
 			});
 		}
 

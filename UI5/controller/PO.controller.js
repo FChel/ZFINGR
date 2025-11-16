@@ -1,12 +1,9 @@
 sap.ui.define([
 	"./BaseController",
 	"../model/formatter",
+	"sap/base/Log",
 	"sap/m/FormattedText",
 	"sap/m/MessageBox",
-	"sap/m/Dialog",
-	"sap/m/Button",
-	"sap/m/Text",
-	"sap/m/ButtonType",	
 	"sap/ui/model/json/JSONModel",
 	"sap/ui/model/Filter",
 	"sap/ui/model/FilterOperator",
@@ -14,7 +11,7 @@ sap.ui.define([
 	"sap/ui/core/library",
 	"sap/ui/events/KeyCodes",
 	"sap/ui/core/syncStyleClass"
-	], function (BaseController, formatter, FormattedText, MessageBox, Dialog, Button, Text, ButtonType, JSONModel, Filter, FilterOperator, Message, library, KeyCodes, syncStyleClass) {
+	], function (BaseController, formatter, Log, FormattedText, MessageBox, JSONModel, Filter, FilterOperator, Message, library, KeyCodes, syncStyleClass) {
 	"use strict";
 
 	var MessageType = library.MessageType;
@@ -144,6 +141,52 @@ sap.ui.define([
 			}
 		},
 
+		/**
+		 * Event handler for navigating to landing page
+		 * @public
+		 */
+		onNavHome: function () {
+			try {
+				var bFLP = this.getModel("componentModel").getProperty("/inFLP");
+
+				if (bFLP === true && sap.ushell && sap.ushell.Container) {
+					this._navigateViaFLP();
+				} else {
+					this._navigateDirectly();
+				}
+			} catch (oError) {
+				// Fallback navigation if FLP services are not available
+				jQuery.sap.log.error("Navigation error", oError);
+				this._navigateDirectly();
+			}
+		},
+
+		/**
+		 * Navigates using FLP cross-app navigation
+		 * @private
+		 */
+		_navigateViaFLP: function () {
+			var oCrossAppNav = sap.ushell.Container.getService("CrossApplicationNavigation");
+
+			if (window.history.length > 1) {
+				oCrossAppNav.historyBack();
+			} else {
+				oCrossAppNav.toExternal({
+					target: {
+						shellHash: "#Shell-home"
+					}
+				});
+			}
+		},
+
+		/**
+		 * Navigates directly to FLP home
+		 * @private
+		 */
+		_navigateDirectly: function () {
+			window.location.replace("../../../ui2/flp#Shell-home");
+		},		
+
 		/* =========================================================== */
 		/* View Binding Methods                                        */
 		/* =========================================================== */
@@ -171,7 +214,9 @@ sap.ui.define([
 				messageButtonIcon: "sap-icon://warning2",
 				poCurrency: "",
 				poCompCode: "",
-				hasChanges: false
+				hasChanges: false,
+				errorShown: false,
+				cancelling: false
 			});
 			this.setModel(oViewModel, "viewModel");
 
@@ -243,7 +288,9 @@ sap.ui.define([
 		 * @param {sap.ui.base.Event} oEvent The event object
 		 */
 		_onDataRequested: function (oEvent) {
-			this.getModel("viewModel").setProperty("/bound", false);
+			var oViewModel = this.getModel("viewModel");
+			oViewModel.setProperty("/bound", false);
+			oViewModel.setProperty("/errorShown", false);
 		},
 
 		/**
@@ -281,48 +328,30 @@ sap.ui.define([
 		 */
 		_showErrorAndNavigate: function (sMessageKey, bIsFormattedText) {
 			var oController = this;
+			var oViewModel = this.getModel("viewModel");
+
+			// Prevent duplicate MessageBoxes
+			if (oViewModel.getProperty("/errorShown")) {
+				return;
+			}
+
+			oViewModel.setProperty("/errorShown", true);
+
 			var sMessage = this.getResourceBundle().getText(sMessageKey);
-			
-			// Create dialog content
-			var oContent = bIsFormattedText ? 
-				new FormattedText("", { htmlText: sMessage }) : 
-				new Text({ text: sMessage });
-			
-			// Create error dialog instance
-			var oErrorDialog = new Dialog({
-				title: this.getResourceBundle().getText("errorTitle"),
-				type: "Message",
-				state: "Error",
-				content: oContent,
-				beginButton: new Button({
-					text: "OK",
-					type: ButtonType.Emphasized,
-					press: function () {
-						this.getParent().close();
-					}
-				}),
-				afterClose: function() {
-					// Clean up this dialog
-					oErrorDialog.destroy();
-					
-					// se setTimeout to let dialog fully close
-					setTimeout(function() {
-						// Reset view
-						oController._resetView();
-						
-						// Clear messages
-						sap.ui.getCore().getMessageManager().removeAllMessages();
-						
-						// Open PO dialog when ready
-						oController.getModel().metadataLoaded().then(function () {
-							oController.getPOSelectDialog().open();
-						});
-					}, 700);
-				}
-			});
-			
-			syncStyleClass("sapUiSizeCompact", this.getView(), oErrorDialog);
-			oErrorDialog.open();
+			var vContent = bIsFormattedText ? 
+					new FormattedText("", { htmlText: sMessage }) : 
+						sMessage;
+
+					sap.ui.getCore().getMessageManager().removeAllMessages();
+
+					MessageBox.error(vContent, {
+						title: this.getResourceBundle().getText("errorTitle"),
+						onClose: function() {
+							oController._resetView();
+							oController.getModel("viewModel").setProperty("/poSelectInput", "");
+							oController.getRouter().navTo("po0", {}, true);
+						}
+					});
 		},
 
 		/**
@@ -904,7 +933,7 @@ sap.ui.define([
 
 			var oRateModel = new JSONModel(oRating);
 
-			var dialog = new Dialog({
+			var dialog = new sap.m.Dialog({
 				title: this.getResourceBundle().getText("successTitle"),
 				type: "Message",
 				state: "Success",
@@ -958,46 +987,39 @@ sap.ui.define([
 		_handleRatingSubmission: function (oEvent, dialog, oViewModel) {
 			var oController = this;
 			var oRating = oEvent.getSource().getModel().getData();
-			dialog.setBusy(true);
 
-			var ratingPromise = jQuery.Deferred();
+			// Submit rating in background if user provided rating or comments
+			if (oRating.Rating || oRating.Comments) {
+				oRating.Rating = oRating.Rating ? oRating.Rating.toString() : "";
 
-			if (!oRating.Rating && !oRating.Comments) {
-				ratingPromise.resolve();
-			} else {
-				oRating.Rating += "";
 				this.getModel("common").create("/FeedbackRatings", oRating, {
-					success: function () {
-						ratingPromise.resolve();
-					},
-					error: function () {
-						ratingPromise.resolve();
+					error: function (oError) {
+						// Log error silently without blocking user flow
+						Log.error(
+								"Failed to save feedback rating",
+								oError ? JSON.stringify(oError) : "",
+										"defence.finance.finux.gr.controller.PO"
+						);
 					}
+				// No success handler needed - fire and forget
 				});
-				setTimeout(function () {
-					ratingPromise.resolve();
-				}, 700);
 			}
 
-			ratingPromise.then(function () {
-				dialog.setBusy(false);
+			// Close dialogue and navigate immediately without waiting
+			dialog.attachEventOnce("afterClose", function() {
+				// Reset the view to clear any posted GR data
+				oController._resetView();
 
-				// Close rating dialogue first, then show PO select dialogue
-				dialog.attachEventOnce("afterClose", function() {
-					// Reset the view to clear any posted GR data
-					oController._resetView();
+				// Clear the PO input field
+				oController.getModel("viewModel").setProperty("/poSelectInput", "");
 
-					// Clear the PO input field
-					oController.getModel("viewModel").setProperty("/poSelectInput", "");
-
-					// Open PO selection dialogue for next GR
-					oController.getModel().metadataLoaded().then(function () {
-						oController.getPOSelectDialog().open();
-					});
+				// Open PO selection dialogue for next GR
+				oController.getModel().metadataLoaded().then(function () {
+					oController.getPOSelectDialog().open();
 				});
-
-				dialog.close();
 			});
+
+			dialog.close();
 		},
 
 		/* =========================================================== */
@@ -1243,15 +1265,49 @@ sap.ui.define([
 		 * @public
 		 */
 		onPoSelectCancel: function () {
+			var oViewModel = this.getModel("viewModel");
+
+			// Prevent duplicate execution
+			if (oViewModel.getProperty("/cancelling")) {
+				return;
+			}
+
+			oViewModel.setProperty("/cancelling", true);
+
 			var oDialog = this.getPOSelectDialog();
 			var oController = this;
 
-			// Close dialogue first, then navigate after it is closed
-			oDialog.attachEventOnce("afterClose", function() {
-				oController.onNavHome();
-			});
+			// Clear input
+			oViewModel.setProperty("/poSelectInput", "");
 
+			// Check if dialog is open
+			oDialog.attachEventOnce("afterClose", function() {
+				oViewModel.setProperty("/cancelling", false);
+
+				var bInFLP = oController.getModel("componentModel").getProperty("/inFLP");
+
+				if (bInFLP) {
+
+					var oCrossAppNav = sap.ushell.Container.getService("CrossApplicationNavigation");
+					oCrossAppNav.toExternal({
+						target: {
+							semanticObject: "Launchpad",
+							action: "openFLPPage"
+						},
+						params: {
+							pageId: "ZSCM_PG_WARE_CLERK_MISC",
+							spaceId: "ZSCM_SP_WARE_CLERK_MISC"
+						}
+					});
+
+
+				} else {
+					window.location.replace("../../../ui2/flp#Shell-home");
+				}
+
+			});
 			oDialog.close();
+
 		},
 
 		/**
