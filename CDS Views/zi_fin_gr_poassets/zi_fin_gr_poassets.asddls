@@ -25,17 +25,22 @@ define view ZI_FIN_GR_POASSETS
                          and anla.anln1 = ekkn.anln1
                          and anla.anln2 = ekkn.anln2    
 {
-  key ekkn.ebeln as PurchaseOrder,
-  key ekkn.ebelp as PurchaseOrderItem,
-  key ekkn.zekkn as AccountAssignmentNumber,
+    key ekkn.ebeln as PurchaseOrder,
+    key ekkn.ebelp as PurchaseOrderItem,
+    key ekkn.zekkn as AccountAssignmentNumber,
       
-      ekkn.anln1 as AssetNumber,
-      ekkn.anln2 as SubNumber,
-      ekko.bukrs as CompanyCode,
-      ekkn.kokrs as ControllingArea,
-      ekkn.kostl as CostCenter,
-      ekkn.aufnr as InternalOrder,
-      ekkn.ps_psp_pnr as WBSElement,
-      anla.anlkl as AssetClass
+        ekkn.anln1 as AssetNumber,
+        ekkn.anln2 as SubNumber,
+        ekko.bukrs as CompanyCode,
+        ekkn.kokrs as ControllingArea,
+        ekkn.kostl as CostCenter,
+        ekkn.aufnr as InternalOrder,
+        ekkn.ps_psp_pnr as WBSElement,
+        anla.anlkl as AssetClass,
+        anla.felei as AssetShutdownIndicator,
+        anla.ktogr as AccountDeterminationKey,
+        anla.txt50 as AssetDescription,
+        anla.xloev as DeletionFlag,
+        anla.xspeb as LockIndicator
 }
 where ekkn.anln1 != ''

@@ -22,8 +22,16 @@ define view ZI_FIN_GR_PORECEIVEDQTY
 {
   key ekbe.ebeln as PurchaseOrder,
   key ekbe.ebelp as PurchaseOrderItem,
+  
   @Semantics.quantity.unitOfMeasure: 'OrderUnit'
-  sum(ekbe.menge) as DeliveredQuantity,
+  sum(
+    case 
+      when ekbe.shkzg = 'S' then ekbe.menge   -- Debit posting
+      when ekbe.shkzg = 'H' then -ekbe.menge  -- Credit posting (reversal)
+      else cast(0 as abap.dec(13,3))          -- Safeguard for unexpected values
+    end
+  ) as DeliveredQuantity,
+  
   ekpo.meins as OrderUnit  -- Using unit from EKPO for consistency
 }
 where ekbe.vgabe = '1' -- Goods Receipt

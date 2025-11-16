@@ -24,6 +24,11 @@ define view ZI_FIN_GR_POITEMS
     left outer join ZI_FIN_GR_PORECEIVEDQTY as gr 
       on  gr.PurchaseOrder = ekpo.ebeln
       and gr.PurchaseOrderItem = ekpo.ebelp
+    -- Join for VAL restriction check
+    left outer join tvarvc as uom_restrict
+      on  uom_restrict.name = 'Z_ZFINGR_RESTRICT_UOM_VAL'
+      and uom_restrict.type = 'P'
+      and uom_restrict.low  = 'X'        
 {
   key ekpo.ebeln      as PurchaseOrder,
   key ekpo.ebelp      as PurchaseOrderItem,
@@ -55,6 +60,7 @@ define view ZI_FIN_GR_POITEMS
       ekpo.erekz      as FinalInvoice,      
       ekpo.wepos      as GoodsReceiptIndicator,
       ekpo.matnr      as MaterialNumber,
+      ekpo.ematn      as PrincipalMaterial,
       ekpo.pstyp      as ItemCategory,
       
       -- GR quantities
@@ -66,15 +72,22 @@ define view ZI_FIN_GR_POITEMS
       
       -- Flags for GR processing
       case when ekpo.wepos = 'X'  -- GR indicator set
-           and ekpo.elikz = ''  -- Not delivery completed
-           and ekpo.loekz = ''  -- Not deleted
-           and ekpo.erekz = ''  -- Not final invoiced
+           and ekpo.elikz is initial  -- Not delivery completed
+           and ekpo.loekz is initial  -- Not deleted
+           and ekpo.erekz is initial  -- Not final invoiced
            and ekpo.knttp != 'X' -- Not unknown account assignment
-           and ekpo.matnr = ''  -- Not Material item
+           and ekpo.matnr is initial  -- Not Material item
            and ekpo.pstyp != '9' -- Not a Service Line
            then 'X'
            else ''
       end as AvailableForGR,
+      
+      -- Exclusion flag for VAL restriction
+      case when ekpo.meins <> 'VAL'
+            and uom_restrict.name is not null                
+           then 'X'
+           else ''
+      end as IsExcludedItem,      
       
       case when ekpo.knttp = 'A'
            then 'X'

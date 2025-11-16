@@ -18,13 +18,20 @@ define view ZI_FIN_GR_POHEADER
   as select from ekko
     left outer join lfa1 on lfa1.lifnr = ekko.lifnr
     
+    -- Join for currency restriction check
+    left outer join tvarvc as currency_restrict
+      on  currency_restrict.name = 'Z_ZFINGR_RESTRICT_CURRENCY_AUD'
+      and currency_restrict.type = 'P'
+      and currency_restrict.low  = 'X'    
+    
     -- Define association to items
     association [0..*] to ekpo as _Items
         on _Items.ebeln = ekko.ebeln
 
     -- Define association to vendor
     association [0..1] to lfa1 as _Vendor
-        on _Vendor.lifnr = ekko.lifnr         
+        on _Vendor.lifnr = ekko.lifnr
+        
 {
   key ekko.ebeln      as PurchaseOrder,
       
@@ -45,20 +52,27 @@ define view ZI_FIN_GR_POHEADER
       ekko.frgzu      as ReleaseStatus,
       
       -- Derived fields
-      case when ekko.memory = ''
+      case when ekko.memory is initial
            then 'X'
            else ''
       end as IsComplete,
       
-      case when ekko.frgrl = ''
+      case when ekko.frgrl is initial
            then 'X'
            else ''
       end as IsApproved,
       
-      case when ekko.bsart = 'NB' or ekko.bsart = 'ZNB'
+      case when ekko.bsart = 'NB' or ekko.bsart = 'ZSPO'
            then 'X'
            else ''
       end as IsStandardPO,
+      
+      -- Currency restriction: AUD only (if restriction is active)
+      case when ekko.waers <> 'AUD'
+           and currency_restrict.name is not null
+           then 'X'
+           else ''
+      end as IsExcluded,      
             
       -- Associations
       _Items,

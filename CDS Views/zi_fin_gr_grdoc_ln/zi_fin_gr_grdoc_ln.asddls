@@ -18,14 +18,19 @@
 @Metadata.ignorePropagatedAnnotations: true
 @VDM.viewType: #COMPOSITE
 define view ZI_FIN_GR_GRDOC_LN
-  as select from matdoc
+    as select from matdoc
+    left outer join matdoc as reversal
+        on  reversal.smbln = matdoc.mblnr
+        and reversal.sjahr = matdoc.mjahr
+        and reversal.smblp = matdoc.zeile
+        and reversal.shkzg = 'H'  
 {
-  key key1              as Key1,
-  key key2              as Key2,
-  key key3              as Key3,
-  key key4              as Key4,
-  key key5              as Key5,
-  key key6              as Key6, 
+    key matdoc.key1     as Key1,
+    key matdoc.key2     as Key2,
+    key matdoc.key3     as Key3,
+    key matdoc.key4     as Key4,
+    key matdoc.key5     as Key5,
+    key matdoc.key6     as Key6, 
   
       matdoc.mblnr      as MaterialDocument,
       matdoc.mjahr      as DocumentYear,
@@ -60,11 +65,15 @@ define view ZI_FIN_GR_GRDOC_LN
       matdoc.waers      as Currency,
       
       -- Reversal information
-      matdoc.smbln      as ReversalDocument,
-      matdoc.sjahr      as ReversalYear,
-      matdoc.smblp      as ReversalItem,
+      matdoc.smbln      as ReferenceMaterialDocument,
+      matdoc.sjahr      as ReferenceMaterialDocumentYear,
+      matdoc.smblp      as ReferenceMaterialDocumentItem,
       
-      case when matdoc.smbln != ''
+      reversal.mblnr    as ReversedByDocument,
+      reversal.mjahr    as ReversedByDocumentYear,
+      reversal.zeile    as ReversedByDocumentItem,
+      
+      case when reversal.mblnr is not null
            then 'X'
            else ''
       end as IsReversed,
