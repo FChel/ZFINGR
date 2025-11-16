@@ -83,7 +83,7 @@ class zcl_zfin_gr_dpc_ext definition
       begin of ty_purchaseorder_deep.
         include type zcl_zfin_gr_mpc=>ts_purchaseorder.
       types: items             type standard table of zcl_zfin_gr_mpc=>ts_purchaseorderitem
-            with default key,
+                          with default key,
         movements         type standard table of zcl_zfin_gr_mpc=>ts_purchaseordermovement
                                 with default key,
         materialdocuments type standard table of zcl_zfin_gr_mpc=>ts_materialdocument
@@ -95,7 +95,7 @@ class zcl_zfin_gr_dpc_ext definition
       begin of ty_goodsreceipt_deep.
         include type zcl_zfin_gr_mpc=>ts_goodsreceipt.
       types: items             type standard table of zcl_zfin_gr_mpc=>ts_goodsreceiptitem
-            with default key,
+                          with default key,
         materialdocuments type standard table of zcl_zfin_gr_mpc=>ts_materialdocument
                                 with default key,
       end of ty_goodsreceipt_deep .
@@ -237,6 +237,8 @@ class zcl_zfin_gr_dpc_ext definition
       importing
         !is_purchaseorder_deep type ty_purchaseorder_deep
         !io_message_container  type ref to /iwbep/if_message_container
+      changing
+        !cs_purchaseorder_deep type ty_purchaseorder_deep
       returning
         value(rv_has_errors)   type abap_bool .
     methods check_field_is_off
@@ -269,6 +271,7 @@ class zcl_zfin_gr_dpc_ext definition
     methods add_custom_error_message
       importing
         !io_message_container type ref to /iwbep/if_message_container
+        !iv_msgty             type symsgty
         !iv_msgid             type symsgid
         !iv_msgno             type symsgno
         !iv_msgv1             type symsgv optional
@@ -313,8 +316,9 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
 *----------------------------------------------------------------------*
 
 
-    data: lv_message         type string,
-          lv_duplicate_count type i.
+    data:
+      lv_message         type string,
+      lv_duplicate_count type i.
 
     rv_has_errors = abap_false.
 
@@ -324,23 +328,28 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
          ls_movement-doc_date is not initial and
          ls_movement-po_item is not initial.
 
-        select mblnr as mat_doc, mjahr as doc_year
-          from mseg
+        select materialdocument as mat_doc, documentyear as doc_year
+          from zi_fin_gr_grdoc_ln
           into table @data(lt_duplicates)
-          where budat_mkpf = @ls_movement-doc_date
-            and bpmng = @ls_movement-entry_qnt
-            and ebeln = @is_purchaseorder_deep-po_number
-            and ebelp = @ls_movement-po_item
-            and shkzg = 'S'.
+          where postingdate = @ls_movement-doc_date
+            and quantityinorderunit = @ls_movement-entry_qnt
+            and purchaseorder = @is_purchaseorder_deep-po_number
+            and purchaseorderitem = @ls_movement-po_item
+            and debitcreditindicator = @ac_constant-shkzg-credit.
 
         lv_duplicate_count = lines( lt_duplicates ).
         if lv_duplicate_count > 0.
           message w003 with lv_duplicate_count into lv_message.
           add_custom_error_message(
             io_message_container = io_message_container
+            iv_msgty = sy-msgty
             iv_msgid = sy-msgid
             iv_msgno = sy-msgno
             iv_msgv1 = conv symsgv( lv_duplicate_count ) ).
+          " Append duplicate material documents to response
+          loop at lt_duplicates into data(ls_duplicates).
+            append corresponding #( ls_duplicates ) to cs_purchaseorder_deep-materialdocuments.
+          endloop.
         endif.
       endif.
 
@@ -349,6 +358,7 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
         message e004 into lv_message.
         add_custom_error_message(
           io_message_container = io_message_container
+          iv_msgty = sy-msgty
           iv_msgid = sy-msgid
           iv_msgno = sy-msgno ).
         rv_has_errors = abap_true.
@@ -359,6 +369,7 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
         message e005 into lv_message.
         add_custom_error_message(
           io_message_container = io_message_container
+          iv_msgty = sy-msgty
           iv_msgid = sy-msgid
           iv_msgno = sy-msgno ).
         rv_has_errors = abap_true.
@@ -434,7 +445,8 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
       createdby,
       iscomplete,
       isapproved,
-      isstandardpo
+      isstandardpo,
+      isexcluded
     from zi_fin_gr_poheader
     where purchaseorder = @lv_ebeln
     into @data(ls_header).
@@ -451,7 +463,7 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
       return.
     endif.
 
-    " Check if this is a standard PO (NB)
+    " Check if this is a standard PO (NB or ZSPO)
     if ls_header-isstandardpo <> abap_true.
       " Not a standard PO - mark as excluded
       rs_purchaseorder_deep-excluded = abap_true.
@@ -467,6 +479,7 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
     rs_purchaseorder_deep-currency = ls_header-currency.
     rs_purchaseorder_deep-complete = ls_header-iscomplete.
     rs_purchaseorder_deep-approved = ls_header-isapproved.
+    rs_purchaseorder_deep-excluded = ls_header-isexcluded.
 
     " Read ALL items from CDS view - (filter below)
     select
@@ -483,6 +496,7 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
       accountassignmentcategory,
       isassetitem,
       availableforgr,
+      isexcludeditem,
       deletionindicator
     from zi_fin_gr_poitems
     where purchaseorder = @lv_ebeln
@@ -495,6 +509,7 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
       " Item exclusion logic:
       " Skip if not available for GR or no quantity remaining
       if ls_item-availableforgr eq abap_false
+      or ls_item-isexcludeditem eq abap_true
       or ls_item-openquantity is initial or ls_item-openquantity <= 0.
         continue.
       endif.
@@ -675,10 +690,8 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
       <ls_item>        like line of lt_item,
       <ls_item_status> like line of lt_item_status.
 
-*--- message container setup
     lo_message_container = mo_context->get_message_container( ).
 
-*--- read GR details using BAPI (keep for validation and compatibility)
     call function 'BAPI_GOODSMVT_GETDETAIL'
       exporting
         materialdocument = iv_mat_doc
@@ -697,33 +710,23 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
       return.
     endif.
 
-*--- header details
     rs_goodsreceipt_deep-mat_doc = iv_mat_doc.
     rs_goodsreceipt_deep-doc_year = iv_doc_year.
     rs_goodsreceipt_deep-username = ls_header-username.
 
-*--- lookup full name
     rs_goodsreceipt_deep-username_full = get_user_full_name( ls_header-username ).
 
-*===================================================================
-*--- CDS VIEW READS: SELECTs replaced with optimised CDS reads
-*===================================================================
-
-*--- read material document lines from CDS (replaces MSEG select + reversal check)
     select *
       from zi_fin_gr_grdoc_ln
       into table @lt_gr_cds
       where materialdocument = @iv_mat_doc
         and documentyear = @iv_doc_year.
 
-*--- lookup po details if items exist
     if lt_item_show is not initial.
 
-*--- get vendor from BAPI (actual GR supplier), PO details from CDS
       rs_goodsreceipt_deep-po_number = lt_item_show[ 1 ]-po_number.
       rs_goodsreceipt_deep-vendor = lt_item_show[ 1 ]-vendor.
 
-*--- read PO header from CDS for currency and reference vendor info
       select single
         purchaseorder,
         currency,
@@ -741,21 +744,17 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
       else.
         rs_goodsreceipt_deep-currency = ls_po_header-currency.
 
-        " Get vendor name - BAPI vendor takes precedence (may differ from PO)
         if rs_goodsreceipt_deep-vendor is not initial.
-          " Vendor from BAPI (actual GR supplier) - get name from LFA1
           select single name1
             from lfa1
             into @rs_goodsreceipt_deep-vendor_name
             where lifnr = @rs_goodsreceipt_deep-vendor.
         else.
-          " Fallback to CDS vendor and name if BAPI vendor not provided
           rs_goodsreceipt_deep-vendor = ls_po_header-vendor.
           rs_goodsreceipt_deep-vendor_name = ls_po_header-vendorname.
         endif.
       endif.
 
-*--- read PO line items from CDS (replaces EKPO select)
       select *
         from zi_fin_gr_poitems
         into table @lt_po_items_cds
@@ -778,56 +777,50 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
       ls_item_status-po_item = ls_item-po_item.
       ls_item_status-cancellation_blocked = abap_false.
 
-*--- read SHKZG and reversal info
+      clear ls_gr_cds.
       read table lt_gr_cds into ls_gr_cds
         with key materialdocument = ls_item-mat_doc
                  documentyear = ls_item-doc_year
                  documentitem = ls_item-matdoc_itm.
-      if sy-subrc = 0.
-        ls_item_status-shkzg = ls_gr_cds-debitcreditindicator.
+
+      if sy-subrc <> 0.
+        ls_item_status-cancellation_blocked = abap_true.
+        append ls_item_status to lt_item_status.
+        continue.
       endif.
 
-*--- check if this is a reversal item (SHKZG = 'H')
-*    reversal items are always blocked from cancellation
+      ls_item_status-shkzg = ls_gr_cds-debitcreditindicator.
+
       if ls_gr_cds-debitcreditindicator = 'H'.
         ls_item_status-cancellation_blocked = abap_true.
         append ls_item_status to lt_item_status.
-        continue.  " Skip further checks for reversal items
+        continue.
       endif.
 
-*--- check if this original item has been reversed using CDS IsReversed field
-*    reversed items are already cancelled and cannot be cancelled again here
-*    (can be done in MIGO)
       if ls_gr_cds-isreversed = abap_true.
         ls_item_status-cancellation_blocked = abap_true.
         append ls_item_status to lt_item_status.
-        continue.  " Skip further checks for reversed items
+        continue.
       endif.
 
-*--- read po line item details
       read table lt_po_items_cds into ls_po_item_cds
         with key purchaseorder = ls_item-po_number
                  purchaseorderitem = ls_item-po_item.
 
-*--- check if blocked due to deletion/account assignment
       if sy-subrc = 0.
         if ls_po_item_cds-accountassignmentcategory = ac_constant-acct_assignment-unknown
         or ls_po_item_cds-deletionindicator is not initial.
           ls_item_status-cancellation_blocked = abap_true.
-          " Continue to ME_READ_HISTORY - might also be invoiced
         endif.
       endif.
 
-*--- check if this is a service line
       if sy-subrc = 0
       and ls_po_item_cds-accountassignmentcategory = 'D'.
         ls_item_status-cancellation_blocked = abap_true.
         append ls_item_status to lt_item_status.
-        continue.  " Skip further checks for service lines (ME_READ_HISTORY - not reliable for services)
+        continue.
       endif.
 
-*--- check quantity remaining and invoice status for THIS specific line
-*    only for normal posted items (not reversal items, not reversed items)
       if ls_item_status-cancellation_blocked = abap_false.
 
         clear lt_xekbes.
@@ -846,9 +839,6 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
 
         if sy-subrc = 0.
 
-*--- if gr based IV flag is set then check that:
-*    (a) quantity remaining is equal to quantity to be cancelled, and
-*    (b) no amount has been invoiced
           if ls_po_item_cds-grbasediv = abap_true.
 
             read table lt_xekbez into ls_xekbez
@@ -860,7 +850,6 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
                 lfpos = ls_item-matdoc_itm.
 
             if sy-subrc = 0.
-              " Check against THIS line's quantity only (not combined)
               if ls_xekbez-bpmng <> ls_item-entry_qnt
               or ls_xekbez-bprem is not initial.
                 ls_item_status-cancellation_blocked = abap_true.
@@ -869,8 +858,6 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
 
           else.
 
-*--- if gr based IV flag is NOT set then check that the amount to be
-*    cancelled is greater than gr - ir amount at line level
             read table lt_xekbes into ls_xekbes
               with key
                 ebelp = ls_item-po_item
@@ -890,13 +877,11 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
 
     endloop.
 
-
 *===================================================================
 *--- SECOND PASS: Combine items for the same PO line
 *===================================================================
     loop at lt_item_show into ls_item.
 
-*--- read SHKZG for current item
       read table lt_gr_cds into ls_gr_cds
         with key materialdocument = ls_item-mat_doc
                  documentyear = ls_item-doc_year
@@ -907,26 +892,22 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
         clear l_shkzg.
       endif.
 
-*--- try to find existing combined item with SAME po line AND SAME shkzg
       loop at lt_item assigning <ls_item>
         where mat_doc = ls_item-mat_doc
           and doc_year = ls_item-doc_year
           and po_number = ls_item-po_number
           and po_item = ls_item-po_item.
 
-        " Check if this combined item has the same SHKZG
         read table lt_gr_cds into data(ls_gr_cds_combined)
           with key materialdocument = <ls_item>-mat_doc
                    documentyear = <ls_item>-doc_year
                    documentitem = <ls_item>-matdoc_itm.
         if sy-subrc = 0 and ls_gr_cds_combined-debitcreditindicator = l_shkzg.
-          " Found matching combined item - add quantities
           add ls_item-entry_qnt to <ls_item>-entry_qnt.
           add ls_item-po_pr_qnt to <ls_item>-po_pr_qnt.
           add ls_item-amount_lc to <ls_item>-amount_lc.
           add ls_item-amount_sv to <ls_item>-amount_sv.
 
-          " If ANY original line was blocked, the combined line is blocked
           read table lt_item_status into ls_item_status
             with key
               mat_doc = ls_item-mat_doc
@@ -934,7 +915,6 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
               po_item = ls_item-po_item
               shkzg = l_shkzg.
           if sy-subrc = 0 and ls_item_status-cancellation_blocked = abap_true.
-            " Mark combined item as blocked using first matdoc_itm
             read table lt_item_status assigning <ls_item_status>
               with key
                 mat_doc = <ls_item>-mat_doc
@@ -945,12 +925,11 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
               <ls_item_status>-cancellation_blocked = abap_true.
             endif.
           endif.
-          exit.  " Item was combined, exit inner loop
+          exit.
         endif.
       endloop.
 
       if sy-subrc <> 0.
-        " No matching combined item found - insert as new
         insert ls_item into table lt_item.
       endif.
 
@@ -963,7 +942,6 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
 
       clear ls_goodsreceiptitem.
 
-*--- basic item details
       ls_goodsreceiptitem-ref_doc_no = ls_header-ref_doc_no.
       ls_goodsreceiptitem-header_txt = ls_header-header_txt.
       ls_goodsreceiptitem-doc_date = ls_header-doc_date.
@@ -972,7 +950,6 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
       ls_goodsreceiptitem-entry_uom = ls_item-entry_uom.
       ls_goodsreceiptitem-entry_qnt = ls_item-entry_qnt.
 
-*--- po line item details from CDS
       read table lt_po_items_cds into ls_po_item_cds
         with key purchaseorder = ls_item-po_number
                  purchaseorderitem = ls_item-po_item.
@@ -982,47 +959,59 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
         ls_goodsreceiptitem-tax_code = ls_po_item_cds-taxcode.
       endif.
 
-*===================================================================
-*--- PRIORITY-BASED STATUS DETERMINATION
-*===================================================================
-
-*--- PRIORITY 0: Determine if this is a Reversal Item (highest display priority)
+      clear ls_gr_cds.
       read table lt_gr_cds into ls_gr_cds
         with key materialdocument = ls_item-mat_doc
                  documentyear = ls_item-doc_year
                  documentitem = ls_item-matdoc_itm.
 
-      if sy-subrc = 0.
-        if ls_gr_cds-debitcreditindicator eq 'S'.
-          " Credit posting - normal GR
-          ls_goodsreceiptitem-selected = abap_true.
-          ls_goodsreceiptitem-status = ac_constant-status-posted.
-          ls_goodsreceiptitem-value_state = ac_constant-value_state-success.
-        else.
-          " Debit posting - this IS the reversal document
-          ls_goodsreceiptitem-entry_qnt = - ls_goodsreceiptitem-entry_qnt.
-          ls_goodsreceiptitem-status = ac_constant-status-reversal_item.
-          ls_goodsreceiptitem-value_state = ac_constant-value_state-warning.
-          ls_goodsreceiptitem-cancellation_blocked = abap_true.
-          " Append and continue - no further status checks needed
-          append ls_goodsreceiptitem to rs_goodsreceipt_deep-items.
-          continue.
-        endif.
+      if sy-subrc <> 0.
+        ls_goodsreceiptitem-status = ac_constant-status-blocked.
+        ls_goodsreceiptitem-value_state = ac_constant-value_state-error.
+        ls_goodsreceiptitem-cancellation_blocked = abap_true.
+        append ls_goodsreceiptitem to rs_goodsreceipt_deep-items.
+        continue.
       endif.
 
-*--- PRIORITY 1: Check if this original GR has been reversed (using CDS IsReversed)
+      if ls_gr_cds-debitcreditindicator = ac_constant-shkzg-debit.
+        ls_goodsreceiptitem-entry_qnt = - ls_goodsreceiptitem-entry_qnt.
+        ls_goodsreceiptitem-status = ac_constant-status-reversal_item.
+        ls_goodsreceiptitem-value_state = ac_constant-value_state-warning.
+        ls_goodsreceiptitem-cancellation_blocked = abap_true.
+        append ls_goodsreceiptitem to rs_goodsreceipt_deep-items.
+        continue.
+      endif.
+
+      ls_goodsreceiptitem-selected = abap_true.
+      ls_goodsreceiptitem-status = ac_constant-status-posted.
+      ls_goodsreceiptitem-value_state = ac_constant-value_state-success.
+
       if ls_gr_cds-isreversed = abap_true.
         ls_goodsreceiptitem-reversed = abap_true.
         ls_goodsreceiptitem-status = ac_constant-status-reversed.
         ls_goodsreceiptitem-value_state = ac_constant-value_state-error.
         ls_goodsreceiptitem-cancellation_blocked = abap_true.
-        " Append and continue - no further status checks needed
         append ls_goodsreceiptitem to rs_goodsreceipt_deep-items.
         continue.
       endif.
 
-*--- PRIORITY 2: Check for invoice matching (ONLY for Posted items)
-*    Get cancellation_blocked status from first pass
+      if ls_po_item_cds-accountassignmentcategory = ac_constant-acct_assignment-service.
+        ls_goodsreceiptitem-cancellation_blocked = abap_true.
+        ls_goodsreceiptitem-status = ac_constant-status-manual_check.
+        ls_goodsreceiptitem-value_state = ac_constant-value_state-warning.
+        append ls_goodsreceiptitem to rs_goodsreceipt_deep-items.
+        continue.
+      endif.
+
+      if ls_po_item_cds-accountassignmentcategory = ac_constant-acct_assignment-unknown
+      or ls_po_item_cds-deletionindicator is not initial.
+        ls_goodsreceiptitem-cancellation_blocked = abap_true.
+        ls_goodsreceiptitem-status = ac_constant-status-blocked.
+        ls_goodsreceiptitem-value_state = ac_constant-value_state-error.
+        append ls_goodsreceiptitem to rs_goodsreceipt_deep-items.
+        continue.
+      endif.
+
       read table lt_item_status into ls_item_status
         with key
           mat_doc = ls_item-mat_doc
@@ -1032,55 +1021,19 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
 
       if sy-subrc = 0 and ls_item_status-cancellation_blocked = abap_true.
         ls_goodsreceiptitem-cancellation_blocked = abap_true.
-
-        " Check if this is due to invoice or just blocked PO line from CDS
-        if ls_po_item_cds-accountassignmentcategory <> ac_constant-acct_assignment-unknown
-        and ls_po_item_cds-deletionindicator is initial.
-          " Not blocked by PO line deletion - must be invoiced
-          ls_goodsreceiptitem-status = ac_constant-status-invoiced.
-          ls_goodsreceiptitem-value_state = ac_constant-value_state-information.
-        endif.
+        ls_goodsreceiptitem-status = ac_constant-status-invoiced.
+        ls_goodsreceiptitem-value_state = ac_constant-value_state-information.
       endif.
 
-*--- PRIORITY 2 (B) Service line handling
-*    SERVICE LINE HANDLING:
-*    Service lines (account assignment 'D') show status ac_constant-status-manual_check
-*    because automated invoice verification is not reliable for services.
-*    Users must verify cancellation status in MIGO/MB03.
-      if ls_po_item_cds-accountassignmentcategory = ac_constant-acct_assignment-service.
-        ls_goodsreceiptitem-cancellation_blocked = abap_true.
-        if ls_goodsreceiptitem-status = ac_constant-status-posted.
-          ls_goodsreceiptitem-status = ac_constant-status-manual_check.
-          ls_goodsreceiptitem-value_state = ac_constant-value_state-warning.
-        endif.
-      endif.
-
-*--- PRIORITY 3: Blocked PO line (only override Posted or Invoiced status)
-      if ls_po_item_cds-accountassignmentcategory = ac_constant-acct_assignment-unknown
-      or ls_po_item_cds-deletionindicator is not initial.
-        ls_goodsreceiptitem-cancellation_blocked = abap_true.
-
-        " Only override if current status is Posted or Invoiced
-        if ls_goodsreceiptitem-status = ac_constant-status-posted
-        or ls_goodsreceiptitem-status = ac_constant-status-invoiced.
-          ls_goodsreceiptitem-status = ac_constant-status-blocked.
-          ls_goodsreceiptitem-value_state = ac_constant-value_state-error.
-        endif.
-      endif.
-
-*--- NOTE: all lines are returned to the front end because they are always
-*    displayed in view mode but hidden (by the app) in cancel mode
       append ls_goodsreceiptitem to rs_goodsreceipt_deep-items.
 
     endloop.
 
-*--- total po value (exclude deleted lines)
     loop at lt_po_items_cds into ls_po_item_cds
-      where deletionindicator is initial.  " Not deleted
+      where deletionindicator is initial.
       add ls_po_item_cds-effectivevalue to rs_goodsreceipt_deep-total_value.
     endloop.
 
-*--- convert total po value to external format
     call function 'CURRENCY_AMOUNT_SAP_TO_BAPI'
       exporting
         currency    = rs_goodsreceipt_deep-currency
@@ -1325,12 +1278,11 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
             " Custom WBS/IO message
             add_custom_error_message(
               io_message_container = io_message_container
-              iv_msgid = 'ZFIGR'
+              iv_msgty = ls_return-type
+              iv_msgid = 'ZFIN_GR'
               iv_msgno = '009'
               iv_msgv1 = ls_return-message_v2
               iv_msgv2 = |PO Item { format_alpha_output( is_movement-po_item ) }| ##NO_TEXT
-              "iv_msgv3 = conv #( gc_constants-ap_name )
-              "iv_msgv4 = conv #( gc_constants-ap_email ) ).
               ).
             lv_custom_handled = abap_true.
           endif.
@@ -1339,12 +1291,11 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
             " Custom GL message
             add_custom_error_message(
               io_message_container = io_message_container
-              iv_msgid = 'ZFIGR'
+              iv_msgty = ls_return-type
+              iv_msgid = 'ZFIN_GR'
               iv_msgno = '009'
               iv_msgv1 = |G/L Account { ls_return-message_v1 }| ##NO_TEXT
               iv_msgv2 = |PO Item { format_alpha_output( is_movement-po_item ) }| ##NO_TEXT
-              "iv_msgv3 = conv #( gc_constants-ap_name )
-              "iv_msgv4 = conv #( gc_constants-ap_email ) ).
               ).
             lv_custom_handled = abap_true.
           endif.
@@ -1353,12 +1304,11 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
             " Custom CC message
             add_custom_error_message(
               io_message_container = io_message_container
-              iv_msgid = 'ZFIGR'
+              iv_msgty = ls_return-type
+              iv_msgid = 'ZFIN_GR'
               iv_msgno = '009'
               iv_msgv1 = |Cost Centre { ls_return-message_v2 }| ##NO_TEXT
               iv_msgv2 = |PO Item { format_alpha_output( is_movement-po_item ) }| ##NO_TEXT
-              "iv_msgv3 = conv #( gc_constants-ap_name )
-              "iv_msgv4 = conv #( gc_constants-ap_email ) ).
               ).
             lv_custom_handled = abap_true.
           endif.
@@ -1751,8 +1701,11 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
     " Validate if in test mode
     if iv_test_mode = abap_true.
       data(lv_has_errors) = validate_goods_receipt_items(
-        is_purchaseorder_deep = cs_purchaseorder_deep
-        io_message_container = lo_message_container ).
+        exporting
+          is_purchaseorder_deep = cs_purchaseorder_deep
+          io_message_container = lo_message_container
+        changing
+          cs_purchaseorder_deep = cs_purchaseorder_deep ).
 
       if lv_has_errors = abap_true.
         return.
@@ -2037,6 +1990,7 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
 
       add_custom_error_message(
         io_message_container = lo_message_container
+        iv_msgty = sy-msgty
         iv_msgid = sy-msgid
         iv_msgno = sy-msgno
         iv_msgv1 = lv_msgv1 ).
@@ -2050,6 +2004,7 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
       else.
         add_custom_error_message(
           io_message_container = lo_message_container
+          iv_msgty = sy-msgty
           iv_msgid = sy-msgid
           iv_msgno = sy-msgno
           iv_msgv1 = sy-msgv1
@@ -2076,7 +2031,7 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
 *----------------------------------------------------------------------*
 
     io_message_container->add_message(
-      iv_msg_type = rs_c_success
+      iv_msg_type = iv_msgty
       iv_msg_id = iv_msgid
       iv_msg_number = iv_msgno
       iv_msg_v1 = iv_msgv1
@@ -2101,7 +2056,7 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
 * 220977FKC    17.10.2025 S2DK940804 Initial Version
 *----------------------------------------------------------------------*
 
-" Required for $expand to signal the framework to handle “$expand”
+    " Required for $expand to signal the framework to handle “$expand”
 * expansion. No custom logic needed.
 
   endmethod.
@@ -2205,7 +2160,7 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
       lo_message_container type ref to /iwbep/if_message_container.
 
 *--- message container setup
-  lo_message_container = mo_context->get_message_container( ).
+    lo_message_container = mo_context->get_message_container( ).
 
 *===> read the supplied data
     io_data_provider->read_entry_data(
@@ -2222,7 +2177,7 @@ CLASS ZCL_ZFIN_GR_DPC_EXT IMPLEMENTATION.
       er_entity-entered_time = sy-uzeit.
 
 *===> save data to table
-      modify ztfin_feedback from er_entity. "#EC CI_DB_OPERATION_OK
+      modify ztfin_feedback from er_entity.     "#EC CI_DB_OPERATION_OK
       if sy-subrc <> 0.
         lo_message_container->add_message(
           iv_msg_type = sy-msgty
