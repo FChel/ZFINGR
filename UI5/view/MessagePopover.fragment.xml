@@ -3,9 +3,12 @@
     xmlns:core="sap.ui.core">
     <MessagePopover
         items="{message>/}"
-        initiallyExpanded="true">
+        initiallyExpanded="true"
+        groupItems="false">
         <MessageItem
             type="{message>type}"
-            title="{message>message}" />
+            title="{message>message}"
+            subtitle="{message>additionalText}"
+            description="{message>description}"/>
     </MessagePopover>
 </core:FragmentDefinition>

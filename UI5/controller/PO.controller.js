@@ -99,49 +99,6 @@ sap.ui.define([
 		/* =========================================================== */
 
 		/**
-		 * Overrides base navigation back to handle unsaved changes.
-		 * @private
-		 * @param {sap.ui.base.Event} oEvent The event object
-		 */
-		_onNavBack: function (oEvent) {
-			var oController = this;
-			var oViewModel = this.getModel("viewModel");
-			var bHasUnsavedChanges = oViewModel.getProperty("/hasChanges");
-
-			if (bHasUnsavedChanges) {
-				MessageBox.warning(this.getResourceBundle().getText("confirmExit"), {
-					initialFocus: null,
-					actions: [MessageBox.Action.OK, MessageBox.Action.CANCEL],
-					onClose: function (sAction) {
-						if (sAction === MessageBox.Action.OK) {
-							oController._handleNavigationBack(oEvent);
-						}
-					}
-				});
-			} else {
-				this._handleNavigationBack(oEvent);
-			}
-		},
-
-		/**
-		 * Handles the actual navigation logic after confirmation.
-		 * @private
-		 * @param {sap.ui.base.Event} oEvent The event object
-		 */
-		_handleNavigationBack: function (oEvent) {
-			this._resetView();
-
-			var oViewModel = this.getModel("viewModel");
-			var bInFLP = this.getModel("componentModel").getProperty("/inFLP");
-
-			if (bInFLP) {
-				this.onNavHome();
-			} else {
-				this._onNoPO(oEvent);
-			}
-		},
-
-		/**
 		 * Event handler for navigating to landing page
 		 * @public
 		 */
@@ -167,16 +124,7 @@ sap.ui.define([
 		 */
 		_navigateViaFLP: function () {
 			var oCrossAppNav = sap.ushell.Container.getService("CrossApplicationNavigation");
-
-			if (window.history.length > 1) {
-				oCrossAppNav.historyBack();
-			} else {
-				oCrossAppNav.toExternal({
-					target: {
-						shellHash: "#Shell-home"
-					}
-				});
-			}
+			oCrossAppNav.backToPreviousApp();
 		},
 
 		/**
@@ -214,9 +162,7 @@ sap.ui.define([
 				messageButtonIcon: "sap-icon://warning2",
 				poCurrency: "",
 				poCompCode: "",
-				hasChanges: false,
-				errorShown: false,
-				cancelling: false
+				hasChanges: false
 			});
 			this.setModel(oViewModel, "viewModel");
 
@@ -238,6 +184,8 @@ sap.ui.define([
 			var sObjectPath = oModel.createKey("/PurchaseOrders", {
 				PoNumber: sPoNumber
 			});
+			
+			this._sCurrentPoNumber = sPoNumber;
 
 			this._bindElement(sObjectPath);
 		},
@@ -290,7 +238,6 @@ sap.ui.define([
 		_onDataRequested: function (oEvent) {
 			var oViewModel = this.getModel("viewModel");
 			oViewModel.setProperty("/bound", false);
-			oViewModel.setProperty("/errorShown", false);
 		},
 
 		/**
@@ -303,55 +250,61 @@ sap.ui.define([
 			var oViewModel = oController.getModel("viewModel");
 			oViewModel.setProperty("/busy", false);
 
-			var oPO = oEvent.getParameters("data").data;
-
+			var oPO = oEvent.getParameters("data").data;			
 			if (!oPO || oPO.PoNumber === "") {
-				this._showErrorAndNavigate("poNotFoundErrorText");
+				var sPoNumber = this._sCurrentPoNumber || "";
+				this._showError("poNotFoundErrorText", [sPoNumber]);
 			} else if (oPO.Excluded) {
-				this._showErrorAndNavigate("poExcluded");
+				this._showError("poExcluded", [oPO.PoNumber]);
 			} else if (!oPO.Complete) {
-				this._showErrorAndNavigate("poNotComplete");
+				this._showError("poNotComplete", [oPO.PoNumberr]);
 			} else if (!oPO.Approved) {
-				this._showErrorAndNavigate("poNotApproved", true);
+				this._showError("poNotApproved", [oPO.PoNumber]);
 			} else if (oPO.Items.length === 0 && !oViewModel.getProperty("/posted")) {
-				this._showErrorAndNavigate("poNotValidForGRErrorText");
+				this._showError("poNotValidForGRErrorText", [oPO.PoNumber]);
 			} else {
 				this._setupModelsAndData(oPO, oViewModel);
 			}
 		},
 
 		/**
-		 * Shows an error message using message button and navigates away.
+		 * Shows an error message in a MessageBox, then back to PO selection.
 		 * @private
 		 * @param {string} sMessageKey The i18n message key
-		 * @param {boolean} [bIsFormattedText=false] Whether to use FormattedText
+		 * @param {array} [aParams] Optional parameters for message formatting
 		 */
-		_showErrorAndNavigate: function (sMessageKey, bIsFormattedText) {
-			var oController = this;
-			var oViewModel = this.getModel("viewModel");
+		_showError: function (sMessageKey, aParams) {
+		    var oViewModel = this.getModel("viewModel");
+		    var oController = this;
 
-			// Prevent duplicate MessageBoxes
-			if (oViewModel.getProperty("/errorShown")) {
-				return;
-			}
+		    // Get message with parameters if provided
+		    var sMessage;
+		    if (aParams && aParams.length > 0) {
+		        sMessage = this.getResourceBundle().getText(sMessageKey, aParams);
+		    } else {
+		        sMessage = this.getResourceBundle().getText(sMessageKey);
+		    }
+		    
+		    // Clear any existing messages
+		    sap.ui.getCore().getMessageManager().removeAllMessages();
+		    
+		    // Unbind the view to prevent _onDataReceived from firing again
+		    this.getView().unbindElement();
 
-			oViewModel.setProperty("/errorShown", true);
+		    // Show error in MessageBox
+		    MessageBox.error(sMessage, {
+		        title: this.getResourceBundle().getText("errorTitle"),
+		        onClose: function() {		            
+		            try {
+		                var oCrossAppNav = sap.ushell.Container.getService("CrossApplicationNavigation");
+		                oCrossAppNav.historyBack();
+		            } catch (oError) {
+		                // Fallback navigation if FLP services are not available
+		                window.history.back();
+		            }
 
-			var sMessage = this.getResourceBundle().getText(sMessageKey);
-			var vContent = bIsFormattedText ? 
-					new FormattedText("", { htmlText: sMessage }) : 
-						sMessage;
-
-					sap.ui.getCore().getMessageManager().removeAllMessages();
-
-					MessageBox.error(vContent, {
-						title: this.getResourceBundle().getText("errorTitle"),
-						onClose: function() {
-							oController._resetView();
-							oController.getModel("viewModel").setProperty("/poSelectInput", "");
-							oController.getRouter().navTo("po0", {}, true);
-						}
-					});
+		        }
+		    });
 		},
 
 		/**
@@ -747,7 +700,7 @@ sap.ui.define([
 			}
 
 			if (bError) {
-				var oButton = this.byId("messagesButton");
+				var oButton = this.getMessageButton();
 				oButton.firePress(oButton);
 			} else {
 				this._handleWarningsAndConfirm(oData, oResult, bDuplicateWarning);
@@ -887,7 +840,7 @@ sap.ui.define([
 			oViewModel.setProperty("/messageButtonIcon", this.getMessageButtonIcon());
 
 			// Automatically open the message popover to show the errors
-			var oButton = this.byId("messagesButton");
+			var oButton = this.getMessageButton();
 			if (oButton) {
 				oButton.firePress();
 			}
@@ -927,7 +880,7 @@ sap.ui.define([
 			var oRating = this.getModel("common").createEntry("/FeedbackRatings").getObject();
 			oRating.Rating = 0;
 			oRating.Comments = "";
-			oRating.SourceObj = "GR";
+			oRating.SourceObj = this.getOwnerComponent().getMetadata().getComponentName();
 			oRating.SourceKey = oResult.MaterialDocuments.results[0].MatDoc;
 			delete oRating.__metadata;
 
@@ -1005,20 +958,19 @@ sap.ui.define([
 				});
 			}
 
-			// Close dialogue and navigate immediately without waiting
-			dialog.attachEventOnce("afterClose", function() {
-				// Reset the view to clear any posted GR data
-				oController._resetView();
 
-				// Clear the PO input field
-				oController.getModel("viewModel").setProperty("/poSelectInput", "");
-
-				// Open PO selection dialogue for next GR
-				oController.getModel().metadataLoaded().then(function () {
-					oController.getPOSelectDialog().open();
-				});
-			});
-
+            try {
+                var oCrossAppNav = sap.ushell.Container.getService("CrossApplicationNavigation");
+                if (window.history.length > 1) {
+                	oCrossAppNav.historyBack();
+                } else {
+                	oCrossAppNav.backToPreviousApp();
+                }
+            } catch (oError) {
+                // Fallback navigation if FLP services are not available
+                window.history.back();
+            }
+			
 			dialog.close();
 		},
 
@@ -1170,7 +1122,7 @@ sap.ui.define([
 						oViewModel.setProperty("/messageButtonIcon", oController.getMessageButtonIcon());
 
 						// Open message popover
-						var oButton = oController.byId("messagesButton");
+						var oButton = oController.getMessageButton();
 						if (oButton) {
 							oButton.firePress();
 						}
@@ -1238,7 +1190,7 @@ sap.ui.define([
 				var oController = this;
 				oDialog.attachEventOnce("afterClose", function() {
 					// Open message popover after dialogue closes
-					var oButton = oController.byId("messagesButton");
+					var oButton = oController.getMessageButton();
 					if (oButton) {
 						oButton.firePress();
 					}
@@ -1267,46 +1219,18 @@ sap.ui.define([
 		onPoSelectCancel: function () {
 			var oViewModel = this.getModel("viewModel");
 
-			// Prevent duplicate execution
-			if (oViewModel.getProperty("/cancelling")) {
-				return;
-			}
-
-			oViewModel.setProperty("/cancelling", true);
-
 			var oDialog = this.getPOSelectDialog();
 			var oController = this;
 
 			// Clear input
 			oViewModel.setProperty("/poSelectInput", "");
 
-			// Check if dialog is open
-			oDialog.attachEventOnce("afterClose", function() {
-				oViewModel.setProperty("/cancelling", false);
-
-				var bInFLP = oController.getModel("componentModel").getProperty("/inFLP");
-
-				if (bInFLP) {
-
-					var oCrossAppNav = sap.ushell.Container.getService("CrossApplicationNavigation");
-					oCrossAppNav.toExternal({
-						target: {
-							semanticObject: "Launchpad",
-							action: "openFLPPage"
-						},
-						params: {
-							pageId: "ZSCM_PG_WARE_CLERK_MISC",
-							spaceId: "ZSCM_SP_WARE_CLERK_MISC"
-						}
-					});
-
-
-				} else {
-					window.location.replace("../../../ui2/flp#Shell-home");
-				}
-
-			});
-			oDialog.close();
+		    // Close dialogue first, then navigate back to FLP launch point
+		    oDialog.attachEventOnce("afterClose", function() {
+		        oController.onNavHome();
+		    });
+		    
+		    oDialog.close();
 
 		},
 
@@ -1400,6 +1324,18 @@ sap.ui.define([
 
 			this.oValueHelpDialog.getTable().setNoData(oResourceBundle.getText("vhNoData1"));
 			this.oValueHelpDialog.setTokens([]);
+						
+		    var oFilterBar = this.oValueHelpDialog.getFilterBar();
+		    if (oFilterBar) {
+		        oFilterBar.clear();
+		    }
+		    
+		    // Clear any table filters
+		    var oBinding = this.oValueHelpDialog.getTable().getBinding("rows");
+		    if (oBinding) {
+		        oBinding.filter([]);
+		    }			
+			
 			this.oValueHelpDialog.open();
 		},
 

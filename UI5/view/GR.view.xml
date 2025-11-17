@@ -257,7 +257,7 @@
 					press=".onSubmitConfirm"
 					type="Emphasized"
 					text="{i18n>poGrSubmitButtonText}"
-					tooltip="{= ${viewModel>/hasSelection} ? ${i18n>cancelGrButtonTooltip} : ${i18n>cancelGrNoSelectionTooltip}}"
+					tooltip="{= ${viewModel>/hasSelection} ? ${i18n>grCancelButtonTooltip} : ${i18n>grCancelButtonNoSelectionTooltip}}"
 					enabled="{= ${viewModel>/bound} &amp;&amp; ${viewModel>/hasSelection} &amp;&amp; ${viewModel>/editMode}}"
 					visible="{viewModel>/editMode}" />
 				

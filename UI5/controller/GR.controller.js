@@ -959,7 +959,7 @@ sap.ui.define([
 			var oRating = this.getModel("common").createEntry("/FeedbackRatings").getObject();
 			oRating.Rating = 0;
 			oRating.Comments = "";
-			oRating.SourceObj = "GR";
+			oRating.SourceObj = this.getOwnerComponent().getMetadata().getComponentName();
 			oRating.SourceKey = oResult.MaterialDocuments.results[0].MatDoc;
 			delete oRating.__metadata;
 

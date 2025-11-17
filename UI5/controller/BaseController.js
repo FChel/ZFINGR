@@ -179,6 +179,15 @@ sap.ui.define([
 
 			return sIcon;
 		},
+		
+		/**
+		 * Gets the message button from the view.
+		 * @public
+		 * @returns {sap.m.Button} The message button instance
+		 */
+		getMessageButton: function () {
+		    return this.byId("messagesButton");
+		},		
 
 		/* =========================================================== */
 		/* Navigation Methods                                          */
