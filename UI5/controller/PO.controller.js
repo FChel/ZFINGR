@@ -113,7 +113,7 @@ sap.ui.define([
 				}
 			} catch (oError) {
 				// Fallback navigation if FLP services are not available
-				jQuery.sap.log.error("Navigation error", oError);
+				Log.error("Navigation error", oError); 
 				this._navigateDirectly();
 			}
 		},
@@ -257,7 +257,7 @@ sap.ui.define([
 			} else if (oPO.Excluded) {
 				this._showError("poExcluded", [oPO.PoNumber]);
 			} else if (!oPO.Complete) {
-				this._showError("poNotComplete", [oPO.PoNumberr]);
+				this._showError("poNotComplete", [oPO.PoNumber]);
 			} else if (!oPO.Approved) {
 				this._showError("poNotApproved", [oPO.PoNumber]);
 			} else if (oPO.Items.length === 0 && !oViewModel.getProperty("/posted")) {
